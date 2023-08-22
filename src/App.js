@@ -4,8 +4,8 @@ import { ThemeProvider } from "theme-ui";
 import { Text } from "rebass";
 import * as Ably from "ably/promises";
 import theme from "./theme";
-
-const API_URL = "https://terrain.sshh.io";
+import CanvasDraw from "react-canvas-draw";
+import { API_URL, useIsMobileOrTablet } from "./utils";
 
 const genRandomID = () => {
   const vocab = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
@@ -17,8 +17,9 @@ const genRandomID = () => {
 };
 
 function App() {
+  const isTouch = useIsMobileOrTablet();
   let [ably, setAbly] = useState(null);
-  console.log(ably);
+  console.log(ably, isTouch);
   useEffect(() => {
     const clientId = genRandomID();
     const ably = new Ably.Realtime.Promise({
@@ -32,6 +33,8 @@ function App() {
         <Text p={2} fontWeight="bold">
           App
         </Text>
+        <CanvasDraw lazyRadius={0} disabled={false} />
+        <CanvasDraw lazyRadius={0} disabled={false} />
       </div>
     </ThemeProvider>
   );
