@@ -18,6 +18,7 @@ const genRandomID = () => {
 
 function App() {
   let [ably, setAbly] = useState(null);
+  console.log(ably);
   useEffect(() => {
     const clientId = genRandomID();
     const ably = new Ably.Realtime.Promise({
