@@ -30,11 +30,16 @@ function App() {
   return (
     <ThemeProvider theme={theme}>
       <div className="App">
-        <Text p={2} fontWeight="bold">
-          App
-        </Text>
-        <CanvasDraw lazyRadius={0} disabled={false} />
-        <CanvasDraw lazyRadius={0} disabled={false} />
+        <CanvasDraw
+          lazyRadius={0}
+          disabled={false}
+          canvasHeight={window.innerHeight}
+          canvasWidth={window.innerWidth}
+          enablePanAndZoom={true}
+          imgSrc="https://picsum.photos/512"
+          mouseZoomFactor={-0.01}
+          zoomExtents={{ min: 0.1, max: 3 }}
+        />
       </div>
     </ThemeProvider>
   );
