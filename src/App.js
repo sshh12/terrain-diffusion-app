@@ -1,7 +1,6 @@
 import "./App.css";
 import React, { useEffect, useState } from "react";
 import { ThemeProvider } from "theme-ui";
-import { Text } from "rebass";
 import * as Ably from "ably/promises";
 import theme from "./theme";
 import CanvasDraw from "react-canvas-draw";
