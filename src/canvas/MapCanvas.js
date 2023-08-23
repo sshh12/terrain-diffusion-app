@@ -1,10 +1,11 @@
 import React, { useEffect, useState, useRef } from "react";
 
-const canvasTypes = ["grid", "drawing", "interface"];
+const canvasTypes = ["grid", "map", "drawing", "interface"];
 
 const drawGrid = (ctx, transform) => {
   ctx.save();
   ctx.translate(transform.x, transform.y);
+  ctx.scale(transform.scale, transform.scale);
   const gridSize = 100;
   const [viewMin, viewMax] = [
     { x: -10000, y: -10000 },
@@ -41,6 +42,30 @@ const drawGrid = (ctx, transform) => {
   ctx.restore();
 };
 
+const drawMap = (ctx, transform, canvas) => {
+  ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+  ctx.save();
+  ctx.translate(transform.x, transform.y);
+  ctx.scale(transform.scale, transform.scale);
+  ctx.drawImage(canvas, 0, 0, 512, 512);
+  ctx.restore();
+};
+
+const drawInter = (ctx, transform) => {
+  ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+  ctx.beginPath();
+  ctx.strokeStyle = "#00ff00";
+  ctx.lineWidth = 10 * transform.scale;
+  const size = 512 * transform.scale;
+  ctx.rect(
+    (window.innerWidth - size) / 2,
+    (window.innerHeight - size) / 2,
+    size,
+    size
+  );
+  ctx.stroke();
+};
+
 const clientPointFromEvent = (e) => {
   // use cursor pos as default
   let clientX = e.clientX;
@@ -64,7 +89,8 @@ function MapCanvas() {
   const canvasRef = useRef({});
   const ctxRef = useRef({});
   const touchStart = useRef(null);
-  const panPos = useRef({ x: 0, y: 0 });
+  const globalTransform = useRef({ scale: 0.5, x: 0, y: 0 });
+  const images = useRef({});
 
   const updateCanvasSize = () => {
     for (let canvasType of canvasTypes) {
@@ -79,23 +105,43 @@ function MapCanvas() {
   };
 
   const draw = (transform) => {
-    const ctx = ctxRef.current.grid;
-    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
     const actualTransform = {
-      x: transform.x + panPos.current.x,
-      y: transform.y + panPos.current.y,
+      x: transform.x + globalTransform.current.x,
+      y: transform.y + globalTransform.current.y,
+      scale: globalTransform.current.scale,
     };
-    ctx.beginPath();
-    ctx.strokeStyle = "#00ff00";
-    ctx.lineWidth = 10;
-    ctx.rect(0, 0, 100, 100);
-    ctx.stroke();
-    drawGrid(ctx, actualTransform);
+
+    const gridCtx = ctxRef.current.grid;
+    gridCtx.clearRect(0, 0, gridCtx.canvas.width, gridCtx.canvas.height);
+    drawGrid(gridCtx, actualTransform);
+
+    const interCtx = ctxRef.current.interface;
+    drawInter(interCtx, actualTransform);
+
+    const mapCtx = ctxRef.current.map;
+    drawMap(mapCtx, actualTransform, canvasRef.current.map.offscreenCanvas);
   };
 
   useEffect(() => {
     updateCanvasSize();
     draw({ x: 0, y: 0 });
+    const onImageLoaded = (img) => {
+      canvasRef.current.map.offscreenCanvas
+        .getContext("2d")
+        .drawImage(img, 0, 0);
+      draw({ x: 0, y: 0 });
+    };
+    images.current["map"] = new Image();
+    images.current["map"].width = 512;
+    images.current["map"].height = 512;
+    images.current["map"].addEventListener(
+      "load",
+      () => {
+        onImageLoaded(images.current["map"]);
+      },
+      false
+    );
+    images.current["map"].src = "https://picsum.photos/512";
   }, []);
 
   const onTouchStart = (e) => {
@@ -119,13 +165,22 @@ function MapCanvas() {
         x: point.x - touchStart.current.x,
         y: point.y - touchStart.current.y,
       };
-      panPos.current = {
-        x: panPos.current.x + touchDiff.x,
-        y: panPos.current.y + touchDiff.y,
+      globalTransform.current = {
+        x: globalTransform.current.x + touchDiff.x,
+        y: globalTransform.current.y + touchDiff.y,
+        scale: globalTransform.current.scale,
       };
       touchStart.current = null;
       draw({ x: 0, y: 0 });
     }
+  };
+
+  const onScroll = (e) => {
+    globalTransform.current.scale = Math.max(
+      Math.min(globalTransform.current.scale + e.deltaY * -0.0005, 4.0),
+      0.15
+    );
+    draw({ x: 0, y: 0 });
   };
 
   return (
@@ -141,6 +196,7 @@ function MapCanvas() {
     >
       {canvasTypes.map((name) => {
         const isInterface = name === "interface";
+        const isMap = name === "map";
         return (
           <canvas
             className={`canvas-${name}`}
@@ -149,6 +205,17 @@ function MapCanvas() {
               if (canvas) {
                 canvasRef.current[name] = canvas;
                 ctxRef.current[name] = canvas.getContext("2d");
+                if (isInterface) {
+                  canvasRef.current[name].addEventListener(
+                    "wheel",
+                    (e) => onScroll(e),
+                    { passive: true }
+                  );
+                }
+                if (isMap) {
+                  canvasRef.current[name].offscreenCanvas =
+                    document.createElement("canvas");
+                }
               }
             }}
             style={{
