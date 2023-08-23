@@ -8,7 +8,7 @@ const drawGrid = (ctx, transform) => {
   ctx.scale(transform.scale, transform.scale);
   const gridSize = 100;
   const [viewMin, viewMax] = [
-    { x: -10000, y: -10000 },
+    { x: 0, y: 0 },
     { x: 10000, y: 10000 },
   ];
   const minx = Math.floor(viewMin.x / gridSize - 1) * gridSize;
@@ -23,7 +23,7 @@ const drawGrid = (ctx, transform) => {
   ctx.lineWidth = 0.5;
 
   let countX = minx;
-  const gridSizeX = 100;
+  const gridSizeX = 64;
   while (countX < maxx) {
     countX += gridSizeX;
     ctx.moveTo(countX, miny);
@@ -32,7 +32,7 @@ const drawGrid = (ctx, transform) => {
   ctx.stroke();
 
   let countY = miny;
-  const gridSizeY = 100;
+  const gridSizeY = 64;
   while (countY < maxy) {
     countY += gridSizeY;
     ctx.moveTo(minx, countY);
@@ -42,28 +42,47 @@ const drawGrid = (ctx, transform) => {
   ctx.restore();
 };
 
-const drawMap = (ctx, transform, canvas) => {
+const drawMap = (ctx, transform, tiles) => {
   ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
   ctx.save();
   ctx.translate(transform.x, transform.y);
   ctx.scale(transform.scale, transform.scale);
-  ctx.drawImage(canvas, 0, 0, 512, 512);
+  for (let tileName in tiles) {
+    const [tileRow, tileCol] = tileName.split("_");
+    ctx.drawImage(
+      tiles[tileName],
+      parseInt(tileRow) * 512,
+      parseInt(tileCol) * 512,
+      512,
+      512
+    );
+  }
   ctx.restore();
+};
+
+const getEditPortDimensions = (transform) => {
+  const size = 512;
+  const offsetX =
+    -transform.x / transform.scale +
+    (window.innerWidth / transform.scale - size) / 2;
+  const offsetY =
+    -transform.y / transform.scale +
+    (window.innerHeight / transform.scale - size) / 2;
+  return { x: Math.floor(offsetX), y: Math.floor(offsetY), size };
 };
 
 const drawInter = (ctx, transform) => {
   ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+  ctx.save();
+  ctx.translate(transform.x, transform.y);
+  ctx.scale(transform.scale, transform.scale);
   ctx.beginPath();
   ctx.strokeStyle = "#00ff00";
-  ctx.lineWidth = 10 * transform.scale;
-  const size = 512 * transform.scale;
-  ctx.rect(
-    (window.innerWidth - size) / 2,
-    (window.innerHeight - size) / 2,
-    size,
-    size
-  );
+  ctx.lineWidth = 10;
+  const { x: offsetX, y: offsetY, size } = getEditPortDimensions(transform);
+  ctx.rect(offsetX, offsetY, size, size);
   ctx.stroke();
+  ctx.restore();
 };
 
 const clientPointFromEvent = (e) => {
@@ -80,7 +99,7 @@ const clientPointFromEvent = (e) => {
   return { x: clientX, y: clientY };
 };
 
-function MapCanvas() {
+function MapCanvas({ renderTile }) {
   const [canvasSize] = useState({
     width: window.innerWidth,
     height: window.innerHeight,
@@ -89,8 +108,13 @@ function MapCanvas() {
   const canvasRef = useRef({});
   const ctxRef = useRef({});
   const touchStart = useRef(null);
-  const globalTransform = useRef({ scale: 0.5, x: 0, y: 0 });
-  const images = useRef({});
+  const globalTransform = useRef({
+    scale: 0.5,
+    x: 0,
+    y: 0,
+    touchDiff: { x: 0, y: 0 },
+  });
+  const tileRef = useRef({});
 
   const updateCanvasSize = () => {
     for (let canvasType of canvasTypes) {
@@ -104,10 +128,10 @@ function MapCanvas() {
     }
   };
 
-  const draw = (transform) => {
+  const draw = () => {
     const actualTransform = {
-      x: transform.x + globalTransform.current.x,
-      y: transform.y + globalTransform.current.y,
+      x: globalTransform.current.x + globalTransform.current.touchDiff.x,
+      y: globalTransform.current.y + globalTransform.current.touchDiff.y,
       scale: globalTransform.current.scale,
     };
 
@@ -119,29 +143,39 @@ function MapCanvas() {
     drawInter(interCtx, actualTransform);
 
     const mapCtx = ctxRef.current.map;
-    drawMap(mapCtx, actualTransform, canvasRef.current.map.offscreenCanvas);
+    drawMap(mapCtx, actualTransform, tileRef.current);
+  };
+
+  window.onGenerate = () => {
+    renderTile(getEditPortDimensions(globalTransform.current));
   };
 
   useEffect(() => {
     updateCanvasSize();
-    draw({ x: 0, y: 0 });
-    const onImageLoaded = (img) => {
-      canvasRef.current.map.offscreenCanvas
-        .getContext("2d")
-        .drawImage(img, 0, 0);
-      draw({ x: 0, y: 0 });
+    draw();
+    const onImageLoaded = (img, tileRow, tileCol) => {
+      const offscreen = new OffscreenCanvas(256, 256);
+      tileRef.current[`${tileRow}_${tileCol}`] = offscreen;
+      offscreen.getContext("2d").drawImage(img, 0, 0);
+      draw();
     };
-    images.current["map"] = new Image();
-    images.current["map"].width = 512;
-    images.current["map"].height = 512;
-    images.current["map"].addEventListener(
-      "load",
-      () => {
-        onImageLoaded(images.current["map"]);
-      },
-      false
-    );
-    images.current["map"].src = "https://picsum.photos/512";
+    window.onUpdateTiles = (tiles) => {
+      console.log("Updating tiles", tiles);
+      for (let tile of tiles) {
+        const tileURL = `https://terrain-diffusion-app.s3.amazonaws.com/public/tiles/global/${tile[0]}_${tile[1]}.png`;
+        const image = new Image();
+        image.width = 512;
+        image.height = 512;
+        image.addEventListener(
+          "load",
+          () => {
+            onImageLoaded(image, tile[0], tile[1]);
+          },
+          false
+        );
+        image.src = tileURL;
+      }
+    };
   }, []);
 
   const onTouchStart = (e) => {
@@ -151,11 +185,11 @@ function MapCanvas() {
   const onTouchMove = (e) => {
     if (!touchStart.current) return;
     const point = clientPointFromEvent(e);
-    const touchDiff = {
+    globalTransform.current.touchDiff = {
       x: point.x - touchStart.current.x,
       y: point.y - touchStart.current.y,
     };
-    draw(touchDiff);
+    draw();
   };
 
   const onTouchEnd = (e) => {
@@ -169,9 +203,10 @@ function MapCanvas() {
         x: globalTransform.current.x + touchDiff.x,
         y: globalTransform.current.y + touchDiff.y,
         scale: globalTransform.current.scale,
+        touchDiff: { x: 0, y: 0 },
       };
       touchStart.current = null;
-      draw({ x: 0, y: 0 });
+      draw();
     }
   };
 

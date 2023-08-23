@@ -1,10 +1,11 @@
 import "./App.css";
-import React, { useEffect, useState } from "react";
-import { ThemeProvider } from "theme-ui";
+import React, { useEffect, useRef } from "react";
 import * as Ably from "ably/promises";
-import theme from "./theme";
-import { API_URL, useIsMobileOrTablet } from "./utils";
+import { ChakraProvider } from "@chakra-ui/react";
+import { API_URL } from "./utils";
 import MapCanvas from "./canvas/MapCanvas";
+import { IconButton } from "@chakra-ui/react";
+import { PlusSquareIcon } from "@chakra-ui/icons";
 
 const genRandomID = () => {
   const vocab = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
@@ -16,22 +17,38 @@ const genRandomID = () => {
 };
 
 function App() {
-  const isTouch = useIsMobileOrTablet();
-  let [ably, setAbly] = useState(null);
-  console.log(ably, isTouch);
+  const ablyRef = useRef(null);
+  const channelRef = useRef(null);
+
   useEffect(() => {
     const clientId = genRandomID();
-    const ably = new Ably.Realtime.Promise({
+    ablyRef.current = new Ably.Realtime.Promise({
       authUrl: `${API_URL}/api/token-request?clientId=${clientId}`,
     });
-    setAbly(ably);
+    channelRef.current = ablyRef.current.channels.get(`channel:global`);
+    channelRef.current.subscribe("tilesUpdated", ({ data }) => {
+      window.onUpdateTiles(data.tiles);
+    });
   }, []);
+
+  const renderTile = (args) => {
+    channelRef.current.publish("renderTile", args);
+  };
+
   return (
-    <ThemeProvider theme={theme}>
+    <ChakraProvider>
       <div className="App">
-        <MapCanvas />
+        <div style={{ position: "absolute", zIndex: 99 }}>
+          <IconButton
+            colorScheme="teal"
+            size="lg"
+            icon={<PlusSquareIcon />}
+            onClick={() => window.onGenerate()}
+          />
+        </div>
+        <MapCanvas renderTile={renderTile} />
       </div>
-    </ThemeProvider>
+    </ChakraProvider>
   );
 }
 
