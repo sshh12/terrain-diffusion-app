@@ -3,8 +3,8 @@ import React, { useEffect, useState } from "react";
 import { ThemeProvider } from "theme-ui";
 import * as Ably from "ably/promises";
 import theme from "./theme";
-import CanvasDraw from "react-canvas-draw";
 import { API_URL, useIsMobileOrTablet } from "./utils";
+import MapCanvas from "./canvas/MapCanvas";
 
 const genRandomID = () => {
   const vocab = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
@@ -29,16 +29,7 @@ function App() {
   return (
     <ThemeProvider theme={theme}>
       <div className="App">
-        <CanvasDraw
-          lazyRadius={0}
-          disabled={false}
-          canvasHeight={window.innerHeight}
-          canvasWidth={window.innerWidth}
-          enablePanAndZoom={true}
-          imgSrc="https://picsum.photos/512"
-          mouseZoomFactor={-0.01}
-          zoomExtents={{ min: 0.1, max: 3 }}
-        />
+        <MapCanvas />
       </div>
     </ThemeProvider>
   );
