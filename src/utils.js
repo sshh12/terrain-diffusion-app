@@ -29,3 +29,12 @@ export function useIsMobileOrTablet() {
   }, []);
   return isMobOrTab;
 }
+
+export const genRandomID = () => {
+  const vocab = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+  let result = "";
+  for (var i = 0; i < 10; i++) {
+    result += vocab.charAt(Math.floor(Math.random() * vocab.length));
+  }
+  return result;
+};

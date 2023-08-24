@@ -2,20 +2,11 @@ import "./App.css";
 import React, { useEffect, useRef } from "react";
 import * as Ably from "ably/promises";
 import { ChakraProvider } from "@chakra-ui/react";
-import { API_URL } from "./utils";
+import { API_URL, genRandomID } from "./utils";
 import MapCanvas from "./canvas/MapCanvas";
 import { IconButton } from "@chakra-ui/react";
 import { PlusSquareIcon } from "@chakra-ui/icons";
 import { FaMountain, FaWater } from "react-icons/fa";
-
-const genRandomID = () => {
-  const vocab = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
-  let result = "";
-  for (var i = 0; i < 6; i++) {
-    result += vocab.charAt(Math.floor(Math.random() * vocab.length));
-  }
-  return result;
-};
 
 function App() {
   const ablyRef = useRef(null);
@@ -29,18 +20,18 @@ function App() {
     });
     channelRef.current = ablyRef.current.channels.get(`channel:global`);
     channelRef.current.subscribe("tilesUpdated", ({ data }) => {
-      window.onUpdateTiles(data.tiles);
+      window.onUpdateTiles(data.tiles, data.id);
     });
     channelRef.current.subscribe("tilesIndex", ({ data }) => {
       if (gotIndex.current) return;
-      window.onUpdateTiles(data.tiles);
+      window.onUpdateTiles(data.tiles, null);
       gotIndex.current = true;
     });
     channelRef.current.publish("indexTiles", {});
   }, []);
 
-  const renderTile = (location, caption) => {
-    channelRef.current.publish("renderTile", { ...location, caption });
+  const renderTile = (location, caption, id) => {
+    channelRef.current.publish("renderTile", { ...location, caption, id });
   };
 
   return (

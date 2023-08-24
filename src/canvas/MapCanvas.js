@@ -1,11 +1,16 @@
 import React, { useEffect, useState, useRef } from "react";
+import { genRandomID } from "../utils";
 
 const canvasTypes = ["grid", "map", "drawing", "interface"];
 
 const drawGrid = (ctx, transform) => {
+  ctx.fillStyle = "#080808";
+  ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+
   ctx.save();
   ctx.translate(transform.x, transform.y);
   ctx.scale(transform.scale, transform.scale);
+
   const gridSize = 1000;
   const gridSpace = 64;
 
@@ -15,7 +20,7 @@ const drawGrid = (ctx, transform) => {
   ctx.beginPath();
   ctx.setLineDash([5, 1]);
   ctx.setLineDash([]);
-  ctx.strokeStyle = "#000";
+  ctx.strokeStyle = "#eee";
   ctx.lineWidth = 0.5;
 
   for (let i = minX; i < gridSize * gridSpace; i += gridSpace) {
@@ -32,7 +37,7 @@ const drawGrid = (ctx, transform) => {
   ctx.restore();
 };
 
-const drawMap = (ctx, transform, tiles) => {
+const drawMap = (ctx, transform, tiles, tileLoads) => {
   ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
   ctx.save();
   ctx.translate(transform.x, transform.y);
@@ -46,6 +51,18 @@ const drawMap = (ctx, transform, tiles) => {
       512,
       512
     );
+  }
+  for (let tileLoad of tileLoads) {
+    ctx.beginPath();
+    ctx.fillStyle = "#000";
+    ctx.rect(tileLoad.x, tileLoad.y, 512, 512);
+    ctx.fill();
+    // draw text that says "loading"
+    ctx.beginPath();
+    ctx.fillStyle = "#fff";
+    ctx.font = "30px Arial";
+    ctx.textAlign = "center";
+    ctx.fillText("Loading...", tileLoad.x + 256, tileLoad.y + 256);
   }
   ctx.restore();
 };
@@ -66,12 +83,20 @@ const drawInter = (ctx, transform) => {
   ctx.save();
   ctx.translate(transform.x, transform.y);
   ctx.scale(transform.scale, transform.scale);
-  ctx.beginPath();
-  ctx.strokeStyle = "#00ff00";
-  ctx.lineWidth = 10;
   const { x: offsetX, y: offsetY, size } = getEditPortDimensions(transform);
+
+  ctx.beginPath();
+  ctx.strokeStyle = "#eee";
+  ctx.lineWidth = 10;
   ctx.rect(offsetX, offsetY, size, size);
   ctx.stroke();
+
+  ctx.beginPath();
+  ctx.strokeStyle = "#ccc";
+  ctx.lineWidth = 10;
+  ctx.rect(offsetX - 2, offsetY - 2, size + 4, size + 4);
+  ctx.stroke();
+
   ctx.restore();
 };
 
@@ -107,6 +132,7 @@ function MapCanvas({ renderTile }) {
     touchScale: 1.0,
   });
   const tileRef = useRef({});
+  const tileLoadRef = useRef([]);
 
   const updateCanvasSize = () => {
     for (let canvasType of canvasTypes) {
@@ -135,11 +161,14 @@ function MapCanvas({ renderTile }) {
     drawInter(interCtx, actualTransform);
 
     const mapCtx = ctxRef.current.map;
-    drawMap(mapCtx, actualTransform, tileRef.current);
+    drawMap(mapCtx, actualTransform, tileRef.current, tileLoadRef.current);
   };
 
   window.onGenerate = (caption) => {
-    renderTile(getEditPortDimensions(globalTransform.current), caption);
+    const id = genRandomID();
+    const location = getEditPortDimensions(globalTransform.current);
+    renderTile(location, caption, id);
+    tileLoadRef.current.push({ id: id, ...location });
   };
 
   useEffect(() => {
@@ -155,8 +184,14 @@ function MapCanvas({ renderTile }) {
       updateCanvasSize();
       draw();
     });
-    window.onUpdateTiles = (tiles) => {
-      console.log("Updating tiles", tiles);
+    window.onUpdateTiles = (tiles, id) => {
+      console.log("Updating tiles", tiles, id);
+      if (id) {
+        tileLoadRef.current = tileLoadRef.current.filter(
+          (tile) => tile.id !== id
+        );
+        draw();
+      }
       for (let tile of tiles) {
         const tileURL = `https://terrain-diffusion-app.s3.amazonaws.com/public/tiles/global/${
           tile[0]
@@ -223,7 +258,6 @@ function MapCanvas({ renderTile }) {
       };
       globalTransform.current.x = globalTransform.current.x + touchDiff.x;
       globalTransform.current.y = globalTransform.current.y + touchDiff.y;
-      globalTransform.current.scale = globalTransform.current.scale;
       globalTransform.current.touchDiff = { x: 0, y: 0 };
       touchStart.current = null;
     }

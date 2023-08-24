@@ -154,7 +154,9 @@ async def main():
                 )
             except Exception as e:
                 print(e)
-            await channel.publish("tilesUpdated", {"tiles": updates_tiles})
+            await channel.publish(
+                "tilesUpdated", {"tiles": updates_tiles, "id": message.data["id"]}
+            )
 
         async def on_index_tiles(message):
             print("Index Tiles", message.data)
