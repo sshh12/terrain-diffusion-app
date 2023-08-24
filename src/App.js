@@ -26,6 +26,10 @@ function App() {
   const gotIndex = useRef(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [startTransform] = useState(
+    JSON.parse(localStorage.getItem("position") || "{}")
+  );
+  console.log(startTransform);
 
   useEffect(() => {
     const clientId = genRandomID();
@@ -161,7 +165,11 @@ function App() {
             onClick={() => window.zoom(1)}
           />
         </div>
-        <MapCanvas renderTile={renderTile} />
+        <MapCanvas
+          renderTile={renderTile}
+          startX={startTransform.x || 0}
+          startY={startTransform.y || 0}
+        />
       </div>
     </ChakraProvider>
   );

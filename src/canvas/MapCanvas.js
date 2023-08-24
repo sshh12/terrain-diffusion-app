@@ -120,6 +120,8 @@ function MapCanvas({
   minZoom = 4,
   maxZoom = 0.05,
   defaultZoom = 0.5,
+  startX = 0,
+  startY = 0,
 }) {
   const [canvasSize] = useState({
     width: window.innerWidth,
@@ -132,8 +134,8 @@ function MapCanvas({
   const touchTwoStart = useRef(null);
   const globalTransform = useRef({
     scale: defaultZoom,
-    x: 0,
-    y: 0,
+    x: startX,
+    y: startY,
     touchDiff: { x: 0, y: 0 },
     touchScale: 1.0,
   });
@@ -183,6 +185,8 @@ function MapCanvas({
 
     const mapCtx = ctxRef.current.map;
     drawMap(mapCtx, actualTransform, tileRef.current, tileLoadRef.current);
+
+    localStorage.setItem("position", JSON.stringify(actualTransform));
   };
 
   window.onGenerate = (caption) => {
