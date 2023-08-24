@@ -302,9 +302,21 @@ function MapCanvas({
       touchStart.current = null;
     }
     if (touchTwoStart.current) {
-      globalTransform.current.scale =
+      const oldScale = globalTransform.current.scale;
+      const newScale =
         globalTransform.current.scale * globalTransform.current.touchScale;
+      globalTransform.current.scale = newScale;
       globalTransform.current.touchScale = 1.0;
+      globalTransform.current.x =
+        (-globalTransform.current.x / oldScale +
+          window.innerWidth / oldScale / 2 -
+          window.innerWidth / newScale / 2) *
+        -newScale;
+      globalTransform.current.y =
+        (-globalTransform.current.y / oldScale +
+          window.innerHeight / oldScale / 2 -
+          window.innerHeight / newScale / 2) *
+        -newScale;
       touchTwoStart.current = null;
     }
     draw();
