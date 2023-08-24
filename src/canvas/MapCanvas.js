@@ -6,15 +6,8 @@ const drawGrid = (ctx, transform) => {
   ctx.save();
   ctx.translate(transform.x, transform.y);
   ctx.scale(transform.scale, transform.scale);
-  const gridSize = 100;
-  const [viewMin, viewMax] = [
-    { x: 0, y: 0 },
-    { x: 10000, y: 10000 },
-  ];
-  const minx = Math.floor(viewMin.x / gridSize - 1) * gridSize;
-  const miny = Math.floor(viewMin.y / gridSize - 1) * gridSize;
-  const maxx = viewMax.x + gridSize;
-  const maxy = viewMax.y + gridSize;
+  const gridSize = 1000;
+  const gridSpace = 64;
 
   ctx.beginPath();
   ctx.setLineDash([5, 1]);
@@ -22,21 +15,15 @@ const drawGrid = (ctx, transform) => {
   ctx.strokeStyle = "#000";
   ctx.lineWidth = 0.5;
 
-  let countX = minx;
-  const gridSizeX = 64;
-  while (countX < maxx) {
-    countX += gridSizeX;
-    ctx.moveTo(countX, miny);
-    ctx.lineTo(countX, maxy);
+  for (let i = 0; i < gridSize * gridSpace; i += gridSpace) {
+    ctx.moveTo(i, 0);
+    ctx.lineTo(i, gridSize * gridSpace);
   }
   ctx.stroke();
 
-  let countY = miny;
-  const gridSizeY = 64;
-  while (countY < maxy) {
-    countY += gridSizeY;
-    ctx.moveTo(minx, countY);
-    ctx.lineTo(maxx, countY);
+  for (let i = 0; i < gridSize * gridSpace; i += gridSpace) {
+    ctx.moveTo(0, i);
+    ctx.lineTo(gridSize * gridSpace, i);
   }
   ctx.stroke();
   ctx.restore();
@@ -109,7 +96,7 @@ function MapCanvas({ renderTile }) {
   const ctxRef = useRef({});
   const touchStart = useRef(null);
   const globalTransform = useRef({
-    scale: 0.5,
+    scale: 1,
     x: 0,
     y: 0,
     touchDiff: { x: 0, y: 0 },
@@ -154,15 +141,21 @@ function MapCanvas({ renderTile }) {
     updateCanvasSize();
     draw();
     const onImageLoaded = (img, tileRow, tileCol) => {
-      const offscreen = new OffscreenCanvas(256, 256);
+      const offscreen = new OffscreenCanvas(512, 512);
       tileRef.current[`${tileRow}_${tileCol}`] = offscreen;
       offscreen.getContext("2d").drawImage(img, 0, 0);
       draw();
     };
+    window.addEventListener("resize", (event) => {
+      updateCanvasSize();
+      draw();
+    });
     window.onUpdateTiles = (tiles) => {
       console.log("Updating tiles", tiles);
       for (let tile of tiles) {
-        const tileURL = `https://terrain-diffusion-app.s3.amazonaws.com/public/tiles/global/${tile[0]}_${tile[1]}.png`;
+        const tileURL = `https://terrain-diffusion-app.s3.amazonaws.com/public/tiles/global/${
+          tile[0]
+        }_${tile[1]}.png?${+Date.now()}`;
         const image = new Image();
         image.width = 512;
         image.height = 512;
@@ -217,7 +210,6 @@ function MapCanvas({ renderTile }) {
       0.15
     );
     globalTransform.current.scale = newScale;
-    console.log(oldScale, newScale);
     const scaleDifference = newScale - oldScale;
     globalTransform.current.x -= globalTransform.current.x * scaleDifference;
     globalTransform.current.y -= globalTransform.current.y * scaleDifference;

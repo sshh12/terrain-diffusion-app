@@ -37,16 +37,23 @@ def get_tile_from_s3(row, col):
         s3_client.download_fileobj(Bucket=BUCKET, Key=path, Fileobj=buffer)
         img = Image.open(buffer)
         img_ary = np.array(img)
+        if img_ary.shape[2] == 4:
+            img_ary = img_ary[:, :, :3]
     except Exception:
         img_ary = np.zeros((TILE_SIZE, TILE_SIZE, 3), dtype=np.uint8)
     return img_ary
 
 
 def save_tile_to_s3(row, col, img_ary):
-    img = Image.fromarray(img_ary)
-    img.save("tmp.png")
-    s3.Bucket(BUCKET).upload_file(
-        "tmp.png", TILE_KEY.format(tile_row=row, tile_col=col)
+    buffer = io.BytesIO()
+    img_rgba = np.concatenate([img_ary, np.full((*img_ary.shape[:2], 1), 255)], axis=-1)
+    black_pixels = np.all(img_ary == [0, 0, 0], axis=-1)
+    img_rgba[black_pixels] = [0, 0, 0, 0]
+    img = Image.fromarray(np.uint8(img_rgba))
+    img.save(buffer, format="PNG")
+    buffer.seek(0)
+    s3_client.upload_fileobj(
+        buffer, BUCKET, TILE_KEY.format(tile_row=row, tile_col=col)
     )
 
 
@@ -68,6 +75,10 @@ def overlapping_tiles(top_left_x, top_left_y):
 
 def render_tile(x, y):
     tiles_coords = overlapping_tiles(x, y)
+    while len(tiles_coords) not in [1, 4]:
+        x -= 1
+        y -= 1
+        tiles_coords = overlapping_tiles(x, y)
 
     print(tiles_coords)
 
@@ -85,19 +96,16 @@ def render_tile(x, y):
             ),
             axis=0,
         )
+        offset_x = tiles_coords[0][1] * TILE_SIZE
+        offset_y = tiles_coords[0][0] * TILE_SIZE
         init_ary = full_ary[
-            x % TILE_SIZE : x % TILE_SIZE + TILE_SIZE,
-            y % TILE_SIZE : y % TILE_SIZE + TILE_SIZE,
+            y - offset_y : y - offset_y + TILE_SIZE,
+            x - offset_x : x - offset_x + TILE_SIZE,
             :,
         ]
 
     mask = np.zeros((TILE_SIZE, TILE_SIZE, 3), dtype=np.uint8)
     mask[np.all(init_ary == 0, axis=2)] = 255
-
-    test = Image.fromarray(init_ary)
-    test.save("tmp.png")
-    test = Image.fromarray(mask)
-    test.save("tmp-mask.png")
 
     prompt = "a satellite image"
     image = inpaint_pipe(
@@ -112,11 +120,19 @@ def render_tile(x, y):
     if len(tiles_coords) == 1:
         save_tile_to_s3(*tiles_coords[0], out_ary)
     else:
+        test = Image.fromarray(full_ary)
+        test.save("tmp-full.png")
+        test = Image.fromarray(init_ary)
+        test.save("tmp.png")
+        test = Image.fromarray(mask)
+        test.save("tmp-mask.png")
         full_ary[
-            x % TILE_SIZE : x % TILE_SIZE + TILE_SIZE,
-            y % TILE_SIZE : y % TILE_SIZE + TILE_SIZE,
+            y - offset_y : y - offset_y + TILE_SIZE,
+            x - offset_x : x - offset_x + TILE_SIZE,
             :,
         ] = out_ary
+        test = Image.fromarray(full_ary)
+        test.save("tmp-full-out.png")
         save_tile_to_s3(*tiles_coords[0], full_ary[:TILE_SIZE, :TILE_SIZE, :])
         save_tile_to_s3(*tiles_coords[1], full_ary[:TILE_SIZE, TILE_SIZE:, :])
         save_tile_to_s3(*tiles_coords[2], full_ary[TILE_SIZE:, :TILE_SIZE, :])
