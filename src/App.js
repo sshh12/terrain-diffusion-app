@@ -4,9 +4,17 @@ import * as Ably from "ably/promises";
 import { ChakraProvider } from "@chakra-ui/react";
 import { API_URL, genRandomID } from "./utils";
 import MapCanvas from "./canvas/MapCanvas";
-import { IconButton } from "@chakra-ui/react";
+import { IconButton, Button } from "@chakra-ui/react";
 import { PlusSquareIcon } from "@chakra-ui/icons";
-import { FaMountain, FaWater } from "react-icons/fa";
+import {
+  FaMountain,
+  FaWater,
+  FaCity,
+  FaTree,
+  FaSnowflake,
+  FaRegKeyboard,
+  FaKeyboard,
+} from "react-icons/fa";
 
 function App() {
   const ablyRef = useRef(null);
@@ -38,16 +46,21 @@ function App() {
     <ChakraProvider>
       <div className="App">
         <div style={{ position: "absolute", zIndex: 99 }}>
-          <IconButton
-            colorScheme="teal"
+          <Button
+            leftIcon={<PlusSquareIcon />}
+            colorScheme="green"
+            variant="solid"
             size="lg"
-            icon={<PlusSquareIcon />}
+            m={2}
             onClick={() => window.onGenerate("a satellite image")}
-          />
+          >
+            Generate
+          </Button>
           <IconButton
             colorScheme="teal"
             size="lg"
             icon={<FaMountain />}
+            m={2}
             onClick={() =>
               window.onGenerate("a satellite image of a mountain range")
             }
@@ -55,9 +68,44 @@ function App() {
           <IconButton
             colorScheme="teal"
             size="lg"
+            m={2}
             icon={<FaWater />}
             onClick={() =>
               window.onGenerate("a satellite image of a body of water")
+            }
+          />
+          <IconButton
+            colorScheme="teal"
+            size="lg"
+            m={2}
+            icon={<FaCity />}
+            onClick={() => window.onGenerate("a satellite image of a city")}
+          />
+          <IconButton
+            colorScheme="teal"
+            size="lg"
+            m={2}
+            icon={<FaTree />}
+            onClick={() => window.onGenerate("a satellite image of a forest")}
+          />
+          <IconButton
+            colorScheme="teal"
+            size="lg"
+            m={2}
+            icon={<FaSnowflake />}
+            onClick={() =>
+              window.onGenerate("a satellite image of a snowy landscape")
+            }
+          />
+          <IconButton
+            colorScheme="teal"
+            size="lg"
+            m={2}
+            icon={<FaKeyboard />}
+            onClick={() =>
+              window.onGenerate(
+                "a satellite image of a " + prompt("a satellite image of a...")
+              )
             }
           />
         </div>
