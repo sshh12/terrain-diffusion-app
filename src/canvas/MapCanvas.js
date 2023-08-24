@@ -175,6 +175,7 @@ function MapCanvas({
     const location = getEditPortDimensions(globalTransform.current);
     renderTile(location, caption, id);
     tileLoadRef.current.push({ id: id, caption: caption, ...location });
+    draw();
   };
 
   window.zoom = (amt) => {
