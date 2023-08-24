@@ -159,7 +159,7 @@ function MapCanvas({
       scale: globalTransform.current.scale * globalTransform.current.touchScale,
     };
 
-    if (globalTransform.current.touchScale != 1.0) {
+    if (globalTransform.current.touchScale !== 1.0) {
       const oldScale = globalTransform.current.scale;
       const newScale = actualTransform.scale;
       actualTransform.x =
