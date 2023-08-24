@@ -19,6 +19,7 @@ const genRandomID = () => {
 function App() {
   const ablyRef = useRef(null);
   const channelRef = useRef(null);
+  const gotIndex = useRef(false);
 
   useEffect(() => {
     const clientId = genRandomID();
@@ -29,6 +30,12 @@ function App() {
     channelRef.current.subscribe("tilesUpdated", ({ data }) => {
       window.onUpdateTiles(data.tiles);
     });
+    channelRef.current.subscribe("tilesIndex", ({ data }) => {
+      if (gotIndex.current) return;
+      window.onUpdateTiles(data.tiles);
+      gotIndex.current = true;
+    });
+    channelRef.current.publish("indexTiles", {});
   }, []);
 
   const renderTile = (args) => {

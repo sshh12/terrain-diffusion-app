@@ -51,8 +51,8 @@ const drawMap = (ctx, transform, tiles) => {
     const [tileRow, tileCol] = tileName.split("_");
     ctx.drawImage(
       tiles[tileName],
-      parseInt(tileRow) * 512,
       parseInt(tileCol) * 512,
+      parseInt(tileRow) * 512,
       512,
       512
     );
@@ -211,11 +211,17 @@ function MapCanvas({ renderTile }) {
   };
 
   const onScroll = (e) => {
-    globalTransform.current.scale = Math.max(
-      Math.min(globalTransform.current.scale + e.deltaY * -0.0005, 4.0),
+    const oldScale = globalTransform.current.scale;
+    const newScale = Math.max(
+      Math.min(oldScale + e.deltaY * -0.0005, 4.0),
       0.15
     );
-    draw({ x: 0, y: 0 });
+    globalTransform.current.scale = newScale;
+    console.log(oldScale, newScale);
+    const scaleDifference = newScale - oldScale;
+    globalTransform.current.x -= globalTransform.current.x * scaleDifference;
+    globalTransform.current.y -= globalTransform.current.y * scaleDifference;
+    draw();
   };
 
   return (
