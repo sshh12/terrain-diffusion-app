@@ -177,10 +177,20 @@ function MapCanvas({
   };
 
   window.zoom = (amt) => {
-    globalTransform.current.scale = Math.max(
-      Math.min(globalTransform.current.scale + amt * 0.1, minZoom),
-      maxZoom
-    );
+    const oldScale = globalTransform.current.scale;
+    const newScale = Math.max(Math.min(oldScale + amt * 0.1, minZoom), maxZoom);
+
+    globalTransform.current.scale = newScale;
+    globalTransform.current.x =
+      (-globalTransform.current.x / oldScale +
+        window.innerWidth / oldScale / 2 -
+        window.innerWidth / newScale / 2) *
+      -newScale;
+    globalTransform.current.y =
+      (-globalTransform.current.y / oldScale +
+        window.innerHeight / oldScale / 2 -
+        window.innerHeight / newScale / 2) *
+      -newScale;
     draw();
   };
 
@@ -286,13 +296,20 @@ function MapCanvas({
   const onScroll = (e) => {
     const oldScale = globalTransform.current.scale;
     const newScale = Math.max(
-      Math.min(oldScale + e.deltaY * -0.0005, minZoom),
+      Math.min(oldScale + (e.deltaY > 0) * 1.0 * -0.0005, minZoom),
       maxZoom
     );
     globalTransform.current.scale = newScale;
-    const scaleDifference = newScale - oldScale;
-    globalTransform.current.x -= globalTransform.current.x * scaleDifference;
-    globalTransform.current.y -= globalTransform.current.y * scaleDifference;
+    globalTransform.current.x =
+      (-globalTransform.current.x / oldScale +
+        window.innerWidth / oldScale / 2 -
+        window.innerWidth / newScale / 2) *
+      -newScale;
+    globalTransform.current.y =
+      (-globalTransform.current.y / oldScale +
+        window.innerHeight / oldScale / 2 -
+        window.innerHeight / newScale / 2) *
+      -newScale;
     draw();
   };
 
