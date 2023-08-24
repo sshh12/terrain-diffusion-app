@@ -13,6 +13,8 @@ import {
   FaTree,
   FaSnowflake,
   FaKeyboard,
+  FaPlus,
+  FaMinus,
 } from "react-icons/fa";
 
 function App() {
@@ -106,6 +108,22 @@ function App() {
                 "a satellite image of a " + prompt("a satellite image of a...")
               )
             }
+          />
+        </div>
+        <div style={{ position: "absolute", zIndex: 99, right: 0 }}>
+          <IconButton
+            colorScheme="whiteAlpha"
+            size="lg"
+            icon={<FaMinus />}
+            m={2}
+            onClick={() => window.zoom(-1)}
+          />
+          <IconButton
+            colorScheme="whiteAlpha"
+            size="lg"
+            m={2}
+            icon={<FaPlus />}
+            onClick={() => window.zoom(1)}
           />
         </div>
         <MapCanvas renderTile={renderTile} />

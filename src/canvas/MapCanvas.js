@@ -114,7 +114,7 @@ const clientPointFromEvent = (e) => {
   return { x: clientX, y: clientY };
 };
 
-function MapCanvas({ renderTile }) {
+function MapCanvas({ renderTile, minZoom = 4, maxZoom = 0.1 }) {
   const [canvasSize] = useState({
     width: window.innerWidth,
     height: window.innerHeight,
@@ -169,6 +169,14 @@ function MapCanvas({ renderTile }) {
     const location = getEditPortDimensions(globalTransform.current);
     renderTile(location, caption, id);
     tileLoadRef.current.push({ id: id, ...location });
+  };
+
+  window.zoom = (amt) => {
+    globalTransform.current.scale = Math.max(
+      Math.min(globalTransform.current.scale + amt * 0.1, minZoom),
+      maxZoom
+    );
+    draw();
   };
 
   useEffect(() => {
@@ -273,8 +281,8 @@ function MapCanvas({ renderTile }) {
   const onScroll = (e) => {
     const oldScale = globalTransform.current.scale;
     const newScale = Math.max(
-      Math.min(oldScale + e.deltaY * -0.0005, 4.0),
-      0.15
+      Math.min(oldScale + e.deltaY * -0.0005, minZoom),
+      maxZoom
     );
     globalTransform.current.scale = newScale;
     const scaleDifference = newScale - oldScale;
