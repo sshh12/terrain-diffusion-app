@@ -18,6 +18,7 @@
     "react-dom": "^18.2.0",
     "react-icons": "^4.10.1",
     "react-scripts": "5.0.0",
+    "react-sweetalert2": "^0.6.0",
     "theme-ui": "^0.13.1",
     "web-vitals": "^2.1.4"
   },

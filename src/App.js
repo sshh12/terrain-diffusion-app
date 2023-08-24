@@ -1,5 +1,5 @@
 import "./App.css";
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import * as Ably from "ably/promises";
 import { ChakraProvider } from "@chakra-ui/react";
 import { API_URL, genRandomID } from "./utils";
@@ -15,12 +15,17 @@ import {
   FaKeyboard,
   FaPlus,
   FaMinus,
+  FaInfo,
+  FaTemperatureHigh,
 } from "react-icons/fa";
+import InfoModal from "./components/InfoModal";
 
 function App() {
   const ablyRef = useRef(null);
   const channelRef = useRef(null);
   const gotIndex = useRef(false);
+  const [helpOpen, setHelpOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const clientId = genRandomID();
@@ -35,6 +40,7 @@ function App() {
       if (gotIndex.current) return;
       window.onUpdateTiles(data.tiles, null);
       gotIndex.current = true;
+      setIsLoading(false);
     });
     channelRef.current.publish("indexTiles", {});
   }, []);
@@ -46,71 +52,99 @@ function App() {
   return (
     <ChakraProvider>
       <div className="App">
-        <div style={{ position: "absolute", zIndex: 99 }}>
+        <InfoModal forceOpen={helpOpen} />
+        {isLoading && (
+          <div style={{ position: "absolute", zIndex: 99 }}>
+            <Button colorScheme="green" variant="solid" size="lg" m={2}>
+              Loading...
+            </Button>
+          </div>
+        )}
+        {!isLoading && (
+          <div style={{ position: "absolute", zIndex: 99 }}>
+            <Button
+              leftIcon={<PlusSquareIcon />}
+              colorScheme="green"
+              variant="solid"
+              size="lg"
+              m={2}
+              onClick={() => window.onGenerate("a satellite image")}
+            >
+              Generate
+            </Button>
+            <IconButton
+              colorScheme="teal"
+              size="lg"
+              icon={<FaMountain />}
+              m={2}
+              onClick={() =>
+                window.onGenerate("a satellite image of a mountain range")
+              }
+            />
+            <IconButton
+              colorScheme="teal"
+              size="lg"
+              m={2}
+              icon={<FaWater />}
+              onClick={() =>
+                window.onGenerate("a satellite image of a body of water")
+              }
+            />
+            <IconButton
+              colorScheme="teal"
+              size="lg"
+              m={2}
+              icon={<FaCity />}
+              onClick={() => window.onGenerate("a satellite image of a city")}
+            />
+            <IconButton
+              colorScheme="teal"
+              size="lg"
+              m={2}
+              icon={<FaTree />}
+              onClick={() => window.onGenerate("a satellite image of a forest")}
+            />
+            <IconButton
+              colorScheme="teal"
+              size="lg"
+              m={2}
+              icon={<FaTemperatureHigh />}
+              onClick={() => window.onGenerate("a satellite image of a desert")}
+            />
+            <IconButton
+              colorScheme="teal"
+              size="lg"
+              m={2}
+              icon={<FaSnowflake />}
+              onClick={() =>
+                window.onGenerate("a satellite image of a snowy landscape")
+              }
+            />
+            <IconButton
+              colorScheme="teal"
+              size="lg"
+              m={2}
+              icon={<FaKeyboard />}
+              onClick={() =>
+                window.onGenerate(
+                  "a satellite image of a " +
+                    prompt("a satellite image of a...")
+                )
+              }
+            />
+          </div>
+        )}
+        <div style={{ position: "absolute", zIndex: 99, right: 0, bottom: 0 }}>
           <Button
-            leftIcon={<PlusSquareIcon />}
-            colorScheme="green"
+            leftIcon={<FaInfo />}
+            colorScheme="blackAlpha"
             variant="solid"
             size="lg"
             m={2}
-            onClick={() => window.onGenerate("a satellite image")}
+            onClick={() => setHelpOpen(true)}
           >
-            Generate
+            Help
           </Button>
-          <IconButton
-            colorScheme="teal"
-            size="lg"
-            icon={<FaMountain />}
-            m={2}
-            onClick={() =>
-              window.onGenerate("a satellite image of a mountain range")
-            }
-          />
-          <IconButton
-            colorScheme="teal"
-            size="lg"
-            m={2}
-            icon={<FaWater />}
-            onClick={() =>
-              window.onGenerate("a satellite image of a body of water")
-            }
-          />
-          <IconButton
-            colorScheme="teal"
-            size="lg"
-            m={2}
-            icon={<FaCity />}
-            onClick={() => window.onGenerate("a satellite image of a city")}
-          />
-          <IconButton
-            colorScheme="teal"
-            size="lg"
-            m={2}
-            icon={<FaTree />}
-            onClick={() => window.onGenerate("a satellite image of a forest")}
-          />
-          <IconButton
-            colorScheme="teal"
-            size="lg"
-            m={2}
-            icon={<FaSnowflake />}
-            onClick={() =>
-              window.onGenerate("a satellite image of a snowy landscape")
-            }
-          />
-          <IconButton
-            colorScheme="teal"
-            size="lg"
-            m={2}
-            icon={<FaKeyboard />}
-            onClick={() =>
-              window.onGenerate(
-                "a satellite image of a " + prompt("a satellite image of a...")
-              )
-            }
-          />
-        </div>
-        <div style={{ position: "absolute", zIndex: 99, right: 0, bottom: 0 }}>
           <IconButton
             colorScheme="whiteAlpha"
             size="lg"

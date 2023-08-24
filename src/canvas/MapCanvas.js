@@ -117,7 +117,7 @@ const clientPointFromEvent = (e) => {
 function MapCanvas({
   renderTile,
   minZoom = 4,
-  maxZoom = 0.1,
+  maxZoom = 0.05,
   defaultZoom = 0.5,
 }) {
   const [canvasSize] = useState({
