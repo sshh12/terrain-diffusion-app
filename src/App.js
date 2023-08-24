@@ -12,7 +12,6 @@ import {
   FaCity,
   FaTree,
   FaSnowflake,
-  FaRegKeyboard,
   FaKeyboard,
 } from "react-icons/fa";
 
