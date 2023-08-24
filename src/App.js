@@ -26,10 +26,9 @@ function App() {
   const gotIndex = useRef(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [startTransform] = useState(
+  const [start] = useState(
     JSON.parse(localStorage.getItem("position") || "{}")
   );
-  console.log(startTransform);
 
   useEffect(() => {
     const clientId = genRandomID();
@@ -167,8 +166,8 @@ function App() {
         </div>
         <MapCanvas
           renderTile={renderTile}
-          startX={startTransform.x || 0}
-          startY={startTransform.y || 0}
+          startX={start.x || 0}
+          startY={start.y || 0}
         />
       </div>
     </ChakraProvider>
