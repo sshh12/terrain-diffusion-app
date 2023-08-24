@@ -270,6 +270,22 @@ function MapCanvas({
       const pdist = Math.sqrt(pdx * pdx + pdy * pdy);
       const dist = Math.sqrt(dx * dx + dy * dy);
       globalTransform.current.touchScale = dist / pdist;
+
+      const oldScale = globalTransform.current.scale;
+      const newScale =
+        globalTransform.current.scale * globalTransform.current.touchScale;
+
+      globalTransform.current.scale = newScale;
+      globalTransform.current.x =
+        (-globalTransform.current.x / oldScale +
+          window.innerWidth / oldScale / 2 -
+          window.innerWidth / newScale / 2) *
+        -newScale;
+      globalTransform.current.y =
+        (-globalTransform.current.y / oldScale +
+          window.innerHeight / oldScale / 2 -
+          window.innerHeight / newScale / 2) *
+        -newScale;
     }
     draw();
   };
