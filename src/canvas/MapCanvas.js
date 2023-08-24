@@ -114,7 +114,12 @@ const clientPointFromEvent = (e) => {
   return { x: clientX, y: clientY };
 };
 
-function MapCanvas({ renderTile, minZoom = 4, maxZoom = 0.1 }) {
+function MapCanvas({
+  renderTile,
+  minZoom = 4,
+  maxZoom = 0.1,
+  defaultZoom = 0.5,
+}) {
   const [canvasSize] = useState({
     width: window.innerWidth,
     height: window.innerHeight,
@@ -125,7 +130,7 @@ function MapCanvas({ renderTile, minZoom = 4, maxZoom = 0.1 }) {
   const touchStart = useRef(null);
   const touchTwoStart = useRef(null);
   const globalTransform = useRef({
-    scale: 1,
+    scale: defaultZoom,
     x: 0,
     y: 0,
     touchDiff: { x: 0, y: 0 },

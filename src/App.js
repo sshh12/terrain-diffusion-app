@@ -110,7 +110,7 @@ function App() {
             }
           />
         </div>
-        <div style={{ position: "absolute", zIndex: 99, right: 0 }}>
+        <div style={{ position: "absolute", zIndex: 99, right: 0, bottom: 0 }}>
           <IconButton
             colorScheme="whiteAlpha"
             size="lg"
