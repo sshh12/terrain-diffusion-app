@@ -73,7 +73,7 @@ def overlapping_tiles(top_left_x, top_left_y):
     return tiles
 
 
-def render_tile(x, y):
+def render_tile(x, y, caption):
     tiles_coords = overlapping_tiles(x, y)
     while len(tiles_coords) not in [1, 4]:
         x -= 1
@@ -107,9 +107,8 @@ def render_tile(x, y):
     mask = np.zeros((TILE_SIZE, TILE_SIZE, 3), dtype=np.uint8)
     mask[np.all(init_ary == 0, axis=2)] = 255
 
-    prompt = "a satellite image"
     image = inpaint_pipe(
-        prompt=prompt,
+        prompt=caption,
         image=Image.fromarray(init_ary),
         mask_image=Image.fromarray(mask),
         num_inference_steps=50,
@@ -120,19 +119,11 @@ def render_tile(x, y):
     if len(tiles_coords) == 1:
         save_tile_to_s3(*tiles_coords[0], out_ary)
     else:
-        test = Image.fromarray(full_ary)
-        test.save("tmp-full.png")
-        test = Image.fromarray(init_ary)
-        test.save("tmp.png")
-        test = Image.fromarray(mask)
-        test.save("tmp-mask.png")
         full_ary[
             y - offset_y : y - offset_y + TILE_SIZE,
             x - offset_x : x - offset_x + TILE_SIZE,
             :,
         ] = out_ary
-        test = Image.fromarray(full_ary)
-        test.save("tmp-full-out.png")
         save_tile_to_s3(*tiles_coords[0], full_ary[:TILE_SIZE, :TILE_SIZE, :])
         save_tile_to_s3(*tiles_coords[1], full_ary[:TILE_SIZE, TILE_SIZE:, :])
         save_tile_to_s3(*tiles_coords[2], full_ary[TILE_SIZE:, :TILE_SIZE, :])
@@ -156,15 +147,17 @@ async def main():
         channel = client.channels.get("channel:global")
 
         async def on_render_tile(message):
-            print("Render tile", message.data)
+            print("Render Tile", message.data)
             try:
-                updates_tiles = render_tile(message.data["x"], message.data["y"])
+                updates_tiles = render_tile(
+                    message.data["x"], message.data["y"], message.data["caption"]
+                )
             except Exception as e:
                 print(e)
             await channel.publish("tilesUpdated", {"tiles": updates_tiles})
 
         async def on_index_tiles(message):
-            print("Index tiles", message.data)
+            print("Index Tiles", message.data)
             await channel.publish("tilesIndex", {"tiles": get_tiles_index()})
 
         await channel.subscribe("renderTile", on_render_tile)

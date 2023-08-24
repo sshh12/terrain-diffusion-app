@@ -95,11 +95,13 @@ function MapCanvas({ renderTile }) {
   const canvasRef = useRef({});
   const ctxRef = useRef({});
   const touchStart = useRef(null);
+  const touchTwoStart = useRef(null);
   const globalTransform = useRef({
     scale: 1,
     x: 0,
     y: 0,
     touchDiff: { x: 0, y: 0 },
+    touchScale: 1.0,
   });
   const tileRef = useRef({});
 
@@ -119,7 +121,7 @@ function MapCanvas({ renderTile }) {
     const actualTransform = {
       x: globalTransform.current.x + globalTransform.current.touchDiff.x,
       y: globalTransform.current.y + globalTransform.current.touchDiff.y,
-      scale: globalTransform.current.scale,
+      scale: globalTransform.current.scale * globalTransform.current.touchScale,
     };
 
     const gridCtx = ctxRef.current.grid;
@@ -133,8 +135,8 @@ function MapCanvas({ renderTile }) {
     drawMap(mapCtx, actualTransform, tileRef.current);
   };
 
-  window.onGenerate = () => {
-    renderTile(getEditPortDimensions(globalTransform.current));
+  window.onGenerate = (caption) => {
+    renderTile(getEditPortDimensions(globalTransform.current), caption);
   };
 
   useEffect(() => {
@@ -172,16 +174,40 @@ function MapCanvas({ renderTile }) {
   }, []);
 
   const onTouchStart = (e) => {
-    touchStart.current = clientPointFromEvent(e);
+    if (!e.touches || e.touches.length === 1) {
+      touchStart.current = clientPointFromEvent(e);
+    }
+    if (e.touches && e.touches.length >= 2) {
+      touchTwoStart.current = {
+        t1: clientPointFromEvent(e.touches[0]),
+        t2: clientPointFromEvent(e.touches[1]),
+      };
+      touchStart.current = null;
+    }
   };
 
   const onTouchMove = (e) => {
-    if (!touchStart.current) return;
-    const point = clientPointFromEvent(e);
-    globalTransform.current.touchDiff = {
-      x: point.x - touchStart.current.x,
-      y: point.y - touchStart.current.y,
-    };
+    if (touchStart.current) {
+      const point = clientPointFromEvent(e);
+      globalTransform.current.touchDiff = {
+        x: point.x - touchStart.current.x,
+        y: point.y - touchStart.current.y,
+      };
+    }
+    if (touchTwoStart.current && e.touches && e.touches.length >= 2) {
+      const prev = touchTwoStart.current;
+      const cur = {
+        t1: clientPointFromEvent(e.touches[0]),
+        t2: clientPointFromEvent(e.touches[1]),
+      };
+      const pdx = prev.t1.x - prev.t2.x;
+      const pdy = prev.t1.y - prev.t2.y;
+      const dx = cur.t1.x - cur.t2.x;
+      const dy = cur.t1.y - cur.t2.y;
+      const pdist = Math.sqrt(pdx * pdx + pdy * pdy);
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      globalTransform.current.touchScale = dist / pdist;
+    }
     draw();
   };
 
@@ -192,15 +218,19 @@ function MapCanvas({ renderTile }) {
         x: point.x - touchStart.current.x,
         y: point.y - touchStart.current.y,
       };
-      globalTransform.current = {
-        x: globalTransform.current.x + touchDiff.x,
-        y: globalTransform.current.y + touchDiff.y,
-        scale: globalTransform.current.scale,
-        touchDiff: { x: 0, y: 0 },
-      };
+      globalTransform.current.x = globalTransform.current.x + touchDiff.x;
+      globalTransform.current.y = globalTransform.current.y + touchDiff.y;
+      globalTransform.current.scale = globalTransform.current.scale;
+      globalTransform.current.touchDiff = { x: 0, y: 0 };
       touchStart.current = null;
-      draw();
     }
+    if (touchTwoStart.current) {
+      globalTransform.current.scale =
+        globalTransform.current.scale * globalTransform.current.touchScale;
+      globalTransform.current.touchScale = 1.0;
+      touchTwoStart.current = null;
+    }
+    draw();
   };
 
   const onScroll = (e) => {

@@ -6,6 +6,7 @@ import { API_URL } from "./utils";
 import MapCanvas from "./canvas/MapCanvas";
 import { IconButton } from "@chakra-ui/react";
 import { PlusSquareIcon } from "@chakra-ui/icons";
+import { FaMountain, FaWater } from "react-icons/fa";
 
 const genRandomID = () => {
   const vocab = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
@@ -38,8 +39,8 @@ function App() {
     channelRef.current.publish("indexTiles", {});
   }, []);
 
-  const renderTile = (args) => {
-    channelRef.current.publish("renderTile", args);
+  const renderTile = (location, caption) => {
+    channelRef.current.publish("renderTile", { ...location, caption });
   };
 
   return (
@@ -50,7 +51,23 @@ function App() {
             colorScheme="teal"
             size="lg"
             icon={<PlusSquareIcon />}
-            onClick={() => window.onGenerate()}
+            onClick={() => window.onGenerate("a satellite image")}
+          />
+          <IconButton
+            colorScheme="teal"
+            size="lg"
+            icon={<FaMountain />}
+            onClick={() =>
+              window.onGenerate("a satellite image of a mountain range")
+            }
+          />
+          <IconButton
+            colorScheme="teal"
+            size="lg"
+            icon={<FaWater />}
+            onClick={() =>
+              window.onGenerate("a satellite image of a body of water")
+            }
           />
         </div>
         <MapCanvas renderTile={renderTile} />
