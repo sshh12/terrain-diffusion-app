@@ -52,11 +52,12 @@ function App() {
   return (
     <ChakraProvider>
       <div className="App">
-        <InfoModal forceOpen={helpOpen} />
+        <InfoModal forceOpen={helpOpen} setForceOpen={setHelpOpen} />
         {isLoading && (
           <div style={{ position: "absolute", zIndex: 99 }}>
             <Button colorScheme="green" variant="solid" size="lg" m={2}>
-              Loading...
+              Loading... if this takes more than a couple seconds, it's probably
+              broken.
             </Button>
           </div>
         )}
@@ -125,12 +126,12 @@ function App() {
               size="lg"
               m={2}
               icon={<FaKeyboard />}
-              onClick={() =>
-                window.onGenerate(
-                  "a satellite image of a " +
-                    prompt("a satellite image of a...")
-                )
-              }
+              onClick={() => {
+                const val = prompt("a satellite image of a...");
+                if (val) {
+                  window.onGenerate("a satellite image of a " + val);
+                }
+              }}
             />
           </div>
         )}

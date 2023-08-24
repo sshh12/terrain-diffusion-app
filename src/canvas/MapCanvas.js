@@ -62,7 +62,8 @@ const drawMap = (ctx, transform, tiles, tileLoads) => {
     ctx.fillStyle = "#fff";
     ctx.font = "30px Arial";
     ctx.textAlign = "center";
-    ctx.fillText("Loading...", tileLoad.x + 256, tileLoad.y + 256);
+    ctx.fillText(`Loading...`, tileLoad.x + 256, tileLoad.y + 80);
+    ctx.fillText(`"${tileLoad.caption}"`, tileLoad.x + 256, tileLoad.y + 256);
   }
   ctx.restore();
 };
@@ -173,7 +174,7 @@ function MapCanvas({
     const id = genRandomID();
     const location = getEditPortDimensions(globalTransform.current);
     renderTile(location, caption, id);
-    tileLoadRef.current.push({ id: id, ...location });
+    tileLoadRef.current.push({ id: id, caption: caption, ...location });
   };
 
   window.zoom = (amt) => {
