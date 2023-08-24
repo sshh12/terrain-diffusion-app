@@ -9,20 +9,23 @@ const drawGrid = (ctx, transform) => {
   const gridSize = 1000;
   const gridSpace = 64;
 
+  const minX = Math.floor(-transform.x / transform.scale / 512) * 512;
+  const minY = Math.floor(-transform.y / transform.scale / 512) * 512;
+
   ctx.beginPath();
   ctx.setLineDash([5, 1]);
   ctx.setLineDash([]);
   ctx.strokeStyle = "#000";
   ctx.lineWidth = 0.5;
 
-  for (let i = 0; i < gridSize * gridSpace; i += gridSpace) {
-    ctx.moveTo(i, 0);
+  for (let i = minX; i < gridSize * gridSpace; i += gridSpace) {
+    ctx.moveTo(i, minY);
     ctx.lineTo(i, gridSize * gridSpace);
   }
   ctx.stroke();
 
-  for (let i = 0; i < gridSize * gridSpace; i += gridSpace) {
-    ctx.moveTo(0, i);
+  for (let i = minY; i < gridSize * gridSpace; i += gridSpace) {
+    ctx.moveTo(minX, i);
     ctx.lineTo(gridSize * gridSpace, i);
   }
   ctx.stroke();
