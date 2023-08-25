@@ -299,12 +299,12 @@ function MapCanvas({
         tileLoadRef.current = tileLoadRef.current.filter(
           (tile) => tile.id !== id
         );
-        draw();
       }
       for (let tile of tiles) {
         const tileKey = `${tile[0]}_${tile[1]}`;
         knownTilesLoadedRef.current[tileKey] = false;
       }
+      draw();
     };
   }, []);
 
