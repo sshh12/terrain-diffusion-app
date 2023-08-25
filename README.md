@@ -1,6 +1,6 @@
 # terrain-diffusion-app
 
-> AKA This Map Does Not Exist, is an infinite colaborative inpainter which allows users to dynamic generate satelite-realistic map tiles.
+> AKA This Map Does Not Exist, is an infinite collaborative inpainter which allows users to dynamic generate satellite-realistic map tiles.
 
 ![chrome_2jH8rnJo9C](https://github.com/sshh12/terrain-diffusion-app/assets/6625384/3f339c6a-859e-4b8b-800f-4ff885a62c55)
 
