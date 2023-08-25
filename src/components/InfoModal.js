@@ -14,7 +14,7 @@ function InfoModal({ forceOpen, setForceOpen }) {
       To generate more parts of the map, <b>place the white square over the edge of an existing region</b> (or in a completely blank space) and <b>click one of the generation buttons at the top</b>. 
       This is a live colaborative map so other users edits will automatically appear. 
       If you have feedback or want to learn more see <b><a href="https://github.com/sshh12/terrain-diffusion-app">github.com/sshh12/terrain-diffusion-app</a><b>.
-      <br/><br/><img src="https://i.imgur.com/fpaakOY.png" />`,
+      <br/><br/><img src="https://i.imgur.com/scomL5Y.png" />`,
     };
   }
   return (
