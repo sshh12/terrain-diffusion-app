@@ -26,8 +26,7 @@ function GenerationMenu({ isLoading, doGenerate, disabled }) {
     <div style={{ position: "absolute", zIndex: 99 }}>
       {isLoading && (
         <Button colorScheme="yellow" variant="solid" size="lg" m={2}>
-          Loading... <br />
-          If this takes more than a couple seconds, try again later.
+          Loading Map...
         </Button>
       )}
       {disabled && (
