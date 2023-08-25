@@ -18,6 +18,7 @@ function App() {
   const [start] = useState(
     JSON.parse(localStorage.getItem("position") || "{}")
   );
+  const [pendingGenerations, setPendingGenerations] = useState([]);
 
   useEffect(() => {
     const clientId = genRandomID();
@@ -27,6 +28,9 @@ function App() {
     channelRef.current = ablyRef.current.channels.get(`channel:global`);
     channelRef.current.subscribe("tilesUpdated", ({ data }) => {
       window.onUpdateTiles(data.tiles, data.id);
+      if (data.id) {
+        setPendingGenerations((prev) => prev.filter((id) => id !== data.id));
+      }
     });
     channelRef.current.subscribe("tilesIndex", ({ data }) => {
       if (gotIndex.current) return;
@@ -41,11 +45,21 @@ function App() {
     channelRef.current.publish("renderTile", { ...location, caption, id });
   };
 
+  const doGenerate = (prompt) => {
+    const id = genRandomID();
+    window.onGenerate(prompt, id);
+    setPendingGenerations((prev) => [...prev, id]);
+  };
+
   return (
     <ChakraProvider>
       <div className="App">
         <InfoModal forceOpen={helpOpen} setForceOpen={setHelpOpen} />
-        <GenerationMenu isLoading={isLoading} />
+        <GenerationMenu
+          isLoading={isLoading}
+          doGenerate={doGenerate}
+          disabled={pendingGenerations.length > 2}
+        />
         <div style={{ position: "absolute", zIndex: 99, right: 0, bottom: 0 }}>
           <Button
             leftIcon={<FaInfo />}

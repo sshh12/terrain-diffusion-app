@@ -21,15 +21,21 @@ const options = [
   { prompt: "a satellite image of a snowy landscape", icon: FaSnowflake },
 ];
 
-function GenerationMenu({ isLoading }) {
+function GenerationMenu({ isLoading, doGenerate, disabled }) {
   return (
     <div style={{ position: "absolute", zIndex: 99 }}>
       {isLoading && (
-        <Button colorScheme="green" variant="solid" size="lg" m={2}>
-          Loading... if this takes more than a couple seconds, try again later.
+        <Button colorScheme="yellow" variant="solid" size="lg" m={2}>
+          Loading... <br />
+          If this takes more than a couple seconds, try again later.
         </Button>
       )}
-      {!isLoading && (
+      {disabled && (
+        <Button colorScheme="yellow" variant="solid" size="lg" m={2}>
+          Wait a few moments...
+        </Button>
+      )}
+      {!isLoading && !disabled && (
         <>
           <Tooltip label={`Generate: "a satellite image"`}>
             <Button
@@ -38,7 +44,7 @@ function GenerationMenu({ isLoading }) {
               variant="solid"
               size="lg"
               m={2}
-              onClick={() => window.onGenerate("a satellite image")}
+              onClick={() => doGenerate("a satellite image")}
             >
               Generate
             </Button>
@@ -51,7 +57,7 @@ function GenerationMenu({ isLoading }) {
                   size="lg"
                   m={2}
                   icon={<opt.icon />}
-                  onClick={() => window.onGenerate(opt.prompt)}
+                  onClick={() => doGenerate(opt.prompt)}
                 />
               </Tooltip>
             );
@@ -65,7 +71,7 @@ function GenerationMenu({ isLoading }) {
               onClick={() => {
                 const val = prompt("a satellite image of a...");
                 if (val) {
-                  window.onGenerate("a satellite image of a " + val);
+                  doGenerate("a satellite image of a " + val);
                 }
               }}
             />

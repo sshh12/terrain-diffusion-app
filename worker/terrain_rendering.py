@@ -1,9 +1,10 @@
-from typing import List, Dict
+from typing import List
 from concurrent.futures import ProcessPoolExecutor
+from functools import partial
+import aioboto3
 import asyncio
 import io
 
-import boto3
 import numpy as np
 from PIL import Image
 
@@ -12,22 +13,19 @@ TILE_KEY = TILE_PATH + "{tile_row}_{tile_col}.png"
 BUCKET = "terrain-diffusion-app"
 TILE_SIZE = 512
 
-s3 = boto3.resource("s3")
-s3_client = boto3.client("s3")
 
-
-def _local_init():
+def _local_init(base_model: str, lora_model: str, cache_dir: str):
     global inpaint_pipe
     from diffusers import StableDiffusionInpaintPipeline
     import torch
 
     inpaint_pipe = StableDiffusionInpaintPipeline.from_pretrained(
-        "stabilityai/stable-diffusion-2-inpainting",
+        base_model,
         torch_dtype=torch.float16,
-        cache_dir=r"F:\hf-wsl-cache",
+        cache_dir=cache_dir,
     )
     inpaint_pipe.unet.load_attn_procs(
-        "F:\output-sd2-inpaint-8x4-1e6-drop03\checkpoint-15000\pytorch_model.bin",
+        lora_model,
         use_safetensors=False,
     )
     inpaint_pipe.to("cuda")
@@ -40,8 +38,16 @@ def _run_local(kwargs):
 
 
 class LocalGPUInpainter:
-    def __init__(self):
-        self.executor = ProcessPoolExecutor(max_workers=1, initializer=_local_init)
+    def __init__(self, base_model: str, lora_model: str, cache_dir: str = None):
+        self.executor = ProcessPoolExecutor(
+            max_workers=1,
+            initializer=partial(
+                _local_init,
+                base_model=base_model,
+                lora_model=lora_model,
+                cache_dir=cache_dir,
+            ),
+        )
 
     async def run(self, **kwargs) -> Image:
         loop = asyncio.get_event_loop()
@@ -65,21 +71,24 @@ def _overlapping_tiles(top_left_x: int, top_left_y: int) -> List:
     return tiles
 
 
-def get_tile_from_s3(row: int, col: int) -> np.ndarray:
+async def get_tile_from_s3(session: aioboto3.Session, row: int, col: int) -> np.ndarray:
     path = TILE_KEY.format(tile_row=row, tile_col=col)
     buffer = io.BytesIO()
     try:
-        s3_client.download_fileobj(Bucket=BUCKET, Key=path, Fileobj=buffer)
-        img = Image.open(buffer)
-        img_ary = np.array(img)
-        if img_ary.shape[2] == 4:
-            img_ary = img_ary[:, :, :3]
+        async with session.client("s3") as s3:
+            await s3.download_fileobj(Bucket=BUCKET, Key=path, Fileobj=buffer)
+            img = Image.open(buffer)
+            img_ary = np.array(img)
+            if img_ary.shape[2] == 4:
+                img_ary = img_ary[:, :, :3]
     except Exception:
         img_ary = np.zeros((TILE_SIZE, TILE_SIZE, 3), dtype=np.uint8)
     return img_ary
 
 
-def save_tile_to_s3(row: int, col: int, img_ary: np.ndarray):
+async def save_tile_to_s3(
+    session: aioboto3.Session, row: int, col: int, img_ary: np.ndarray
+):
     buffer = io.BytesIO()
     img_rgba = np.concatenate([img_ary, np.full((*img_ary.shape[:2], 1), 255)], axis=-1)
     black_pixels = np.all(img_ary == [0, 0, 0], axis=-1)
@@ -87,18 +96,22 @@ def save_tile_to_s3(row: int, col: int, img_ary: np.ndarray):
     img = Image.fromarray(np.uint8(img_rgba))
     img.save(buffer, format="PNG")
     buffer.seek(0)
-    s3_client.upload_fileobj(
-        buffer, BUCKET, TILE_KEY.format(tile_row=row, tile_col=col)
-    )
+    async with session.client("s3") as s3:
+        await s3.upload_fileobj(
+            buffer, BUCKET, TILE_KEY.format(tile_row=row, tile_col=col)
+        )
 
 
-def get_tiles_index() -> List:
+async def get_all_tiles() -> List:
+    session = aioboto3.Session()
     tiles = []
-    for item in s3.Bucket(BUCKET).objects.filter(Prefix=TILE_PATH):
-        item_key = item.key.split("/")[-1].replace(".png", "")
-        if "_" in item_key:
-            row, col = item_key.split("_")
-            tiles.append((int(row), int(col)))
+    async with session.resource("s3") as s3:
+        bucket = await s3.Bucket(BUCKET)
+        async for item in bucket.objects.filter(Prefix=TILE_PATH):
+            item_key = item.key.split("/")[-1].replace(".png", "")
+            if "_" in item_key:
+                row, col = item_key.split("_")
+                tiles.append((int(row), int(col)))
     return tiles
 
 
@@ -109,13 +122,17 @@ async def render_tile(model: LocalGPUInpainter, x: int, y: int, caption: str) ->
         y -= 1
         tiles_coords = _overlapping_tiles(x, y)
 
+    session = aioboto3.Session()
+
     if len(tiles_coords) == 1:
-        init_ary = get_tile_from_s3(*tiles_coords[0])
+        init_ary = await get_tile_from_s3(session, *tiles_coords[0])
     else:
-        top_left = get_tile_from_s3(*tiles_coords[0])
-        top_right = get_tile_from_s3(*tiles_coords[1])
-        bottom_left = get_tile_from_s3(*tiles_coords[2])
-        bottom_right = get_tile_from_s3(*tiles_coords[3])
+        top_left, top_right, bottom_left, bottom_right = await asyncio.gather(
+            get_tile_from_s3(session, *tiles_coords[0]),
+            get_tile_from_s3(session, *tiles_coords[1]),
+            get_tile_from_s3(session, *tiles_coords[2]),
+            get_tile_from_s3(session, *tiles_coords[3]),
+        )
         full_ary = np.concatenate(
             (
                 np.concatenate((top_left, top_right), axis=1),
@@ -145,16 +162,24 @@ async def render_tile(model: LocalGPUInpainter, x: int, y: int, caption: str) ->
     out_ary = np.array(image)
 
     if len(tiles_coords) == 1:
-        save_tile_to_s3(*tiles_coords[0], out_ary)
+        await save_tile_to_s3(session, *tiles_coords[0], out_ary)
     else:
         full_ary[
             y - offset_y : y - offset_y + TILE_SIZE,
             x - offset_x : x - offset_x + TILE_SIZE,
             :,
         ] = out_ary
-        save_tile_to_s3(*tiles_coords[0], full_ary[:TILE_SIZE, :TILE_SIZE, :])
-        save_tile_to_s3(*tiles_coords[1], full_ary[:TILE_SIZE, TILE_SIZE:, :])
-        save_tile_to_s3(*tiles_coords[2], full_ary[TILE_SIZE:, :TILE_SIZE, :])
-        save_tile_to_s3(*tiles_coords[3], full_ary[TILE_SIZE:, TILE_SIZE:, :])
+        await save_tile_to_s3(
+            session, *tiles_coords[0], full_ary[:TILE_SIZE, :TILE_SIZE, :]
+        )
+        await save_tile_to_s3(
+            session, *tiles_coords[1], full_ary[:TILE_SIZE, TILE_SIZE:, :]
+        )
+        await save_tile_to_s3(
+            session, *tiles_coords[2], full_ary[TILE_SIZE:, :TILE_SIZE, :]
+        )
+        await save_tile_to_s3(
+            session, *tiles_coords[3], full_ary[TILE_SIZE:, TILE_SIZE:, :]
+        )
 
     return tiles_coords

@@ -1,5 +1,4 @@
 import React, { useEffect, useState, useRef } from "react";
-import { genRandomID } from "../utils";
 
 const canvasTypes = ["grid", "map", "drawing", "interface"];
 
@@ -249,8 +248,7 @@ function MapCanvas({
   // HACK
   window.draw = draw;
 
-  window.onGenerate = (caption) => {
-    const id = genRandomID();
+  window.onGenerate = (caption, id) => {
     const location = getEditPortDimensions(globalTransform.current);
     renderTile(location, caption, id);
     tileLoadRef.current.push({ id: id, caption: caption, ...location });
