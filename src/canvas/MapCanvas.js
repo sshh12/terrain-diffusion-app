@@ -105,6 +105,19 @@ const drawInter = (ctx, transform) => {
   ctx.rect(offsetX - 2, offsetY - 2, size + 4, size + 4);
   ctx.stroke();
 
+  // draw text that says "loading"
+  ctx.beginPath();
+  ctx.fillStyle = "#fff";
+  ctx.font = "30px Arial";
+  ctx.textAlign = "center";
+  ctx.fillText(
+    `${Math.floor(-transform.x)}, ${Math.floor(-transform.y)}`,
+    offsetX + size / 2,
+    offsetY + size + 50,
+    size,
+    size
+  );
+
   ctx.restore();
 };
 
