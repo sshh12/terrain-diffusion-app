@@ -3,6 +3,14 @@ import { genRandomID } from "../utils";
 
 const canvasTypes = ["grid", "map", "drawing", "interface"];
 
+const getViewPort = (transform) => {
+  const minX = -transform.x / transform.scale;
+  const minY = -transform.y / transform.scale;
+  const maxX = (-transform.x + window.innerWidth) / transform.scale;
+  const maxY = (-transform.y + window.innerHeight) / transform.scale;
+  return { minX, minY, maxX, maxY };
+};
+
 const drawGrid = (ctx, transform) => {
   ctx.fillStyle = "#080808";
   ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
@@ -11,11 +19,11 @@ const drawGrid = (ctx, transform) => {
   ctx.translate(transform.x, transform.y);
   ctx.scale(transform.scale, transform.scale);
 
-  const gridSize = 1000;
   const gridSpace = 64;
 
-  const minX = Math.floor(-transform.x / transform.scale / 512) * 512;
-  const minY = Math.floor(-transform.y / transform.scale / 512) * 512;
+  let { minX, minY, maxX, maxY } = getViewPort(transform);
+  minX = Math.floor(minX / gridSpace) * gridSpace;
+  minY = Math.floor(minY / gridSpace) * gridSpace;
 
   ctx.beginPath();
   ctx.setLineDash([5, 1]);
@@ -23,15 +31,15 @@ const drawGrid = (ctx, transform) => {
   ctx.strokeStyle = "#eee";
   ctx.lineWidth = 0.5;
 
-  for (let i = minX; i < gridSize * gridSpace; i += gridSpace) {
+  for (let i = minX; i < maxX; i += gridSpace) {
     ctx.moveTo(i, minY);
-    ctx.lineTo(i, gridSize * gridSpace);
+    ctx.lineTo(i, maxY);
   }
   ctx.stroke();
 
-  for (let i = minY; i < gridSize * gridSpace; i += gridSpace) {
+  for (let i = minY; i < maxY; i += gridSpace) {
     ctx.moveTo(minX, i);
-    ctx.lineTo(gridSize * gridSpace, i);
+    ctx.lineTo(maxX, i);
   }
   ctx.stroke();
   ctx.restore();
@@ -115,11 +123,39 @@ const clientPointFromEvent = (e) => {
   return { x: clientX, y: clientY };
 };
 
+const inViewPort = ({ x, y, x2, y2 }, transform) => {
+  const { minX, minY, maxX, maxY } = getViewPort(transform);
+  return (
+    (x >= minX && x <= maxX && y >= minY && y <= maxY) ||
+    (x2 >= minX && x2 <= maxX && y >= minY && y <= maxY) ||
+    (x >= minX && x <= maxX && y2 >= minY && y2 <= maxY) ||
+    (x2 >= minX && x2 <= maxX && y2 >= minY && y2 <= maxY)
+  );
+};
+
+const loadTile = (tileKey, tiles, draw) => {
+  const tileURL = `https://terrain-diffusion-app.s3.amazonaws.com/public/tiles/global/${tileKey}.png?${+Date.now()}`;
+  const image = new Image();
+  image.width = 512;
+  image.height = 512;
+  image.addEventListener(
+    "load",
+    () => {
+      const offscreen = new OffscreenCanvas(512, 512);
+      tiles[tileKey] = offscreen;
+      offscreen.getContext("2d").drawImage(image, 0, 0);
+      draw();
+    },
+    false
+  );
+  image.src = tileURL;
+};
+
 function MapCanvas({
   renderTile,
   minZoom = 4,
-  maxZoom = 0.05,
-  defaultZoom = 0.5,
+  maxZoom = 0.01,
+  startZoom = 0.5,
   startX = 0,
   startY = 0,
 }) {
@@ -130,10 +166,11 @@ function MapCanvas({
 
   const canvasRef = useRef({});
   const ctxRef = useRef({});
+  const knownTilesLoadedRef = useRef({});
   const touchStart = useRef(null);
   const touchTwoStart = useRef(null);
   const globalTransform = useRef({
-    scale: defaultZoom,
+    scale: startZoom,
     x: startX,
     y: startY,
     touchDiff: { x: 0, y: 0 },
@@ -183,11 +220,34 @@ function MapCanvas({
     const interCtx = ctxRef.current.interface;
     drawInter(interCtx, actualTransform);
 
+    for (let tileKey in knownTilesLoadedRef.current) {
+      const [tileRow, tileCol] = tileKey.split("_");
+      if (!knownTilesLoadedRef.current[tileKey]) {
+        if (
+          inViewPort(
+            {
+              x: tileCol * 512,
+              y: tileRow * 512,
+              x2: tileCol * 512 + 512,
+              y2: tileRow * 512 + 512,
+            },
+            actualTransform
+          )
+        ) {
+          console.log("Loading tile image", tileKey);
+          loadTile(tileKey, tileRef.current, window.draw);
+          knownTilesLoadedRef.current[tileKey] = true;
+        }
+      }
+    }
+
     const mapCtx = ctxRef.current.map;
     drawMap(mapCtx, actualTransform, tileRef.current, tileLoadRef.current);
 
     localStorage.setItem("position", JSON.stringify(actualTransform));
   };
+  // HACK
+  window.draw = draw;
 
   window.onGenerate = (caption) => {
     const id = genRandomID();
@@ -218,12 +278,6 @@ function MapCanvas({
   useEffect(() => {
     updateCanvasSize();
     draw();
-    const onImageLoaded = (img, tileRow, tileCol) => {
-      const offscreen = new OffscreenCanvas(512, 512);
-      tileRef.current[`${tileRow}_${tileCol}`] = offscreen;
-      offscreen.getContext("2d").drawImage(img, 0, 0);
-      draw();
-    };
     window.addEventListener("resize", (event) => {
       updateCanvasSize();
       draw();
@@ -237,20 +291,8 @@ function MapCanvas({
         draw();
       }
       for (let tile of tiles) {
-        const tileURL = `https://terrain-diffusion-app.s3.amazonaws.com/public/tiles/global/${
-          tile[0]
-        }_${tile[1]}.png?${+Date.now()}`;
-        const image = new Image();
-        image.width = 512;
-        image.height = 512;
-        image.addEventListener(
-          "load",
-          () => {
-            onImageLoaded(image, tile[0], tile[1]);
-          },
-          false
-        );
-        image.src = tileURL;
+        const tileKey = `${tile[0]}_${tile[1]}`;
+        knownTilesLoadedRef.current[tileKey] = false;
       }
     };
   }, []);

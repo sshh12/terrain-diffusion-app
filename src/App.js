@@ -5,20 +5,9 @@ import { ChakraProvider } from "@chakra-ui/react";
 import { API_URL, genRandomID } from "./utils";
 import MapCanvas from "./canvas/MapCanvas";
 import { IconButton, Button } from "@chakra-ui/react";
-import { PlusSquareIcon } from "@chakra-ui/icons";
-import {
-  FaMountain,
-  FaWater,
-  FaCity,
-  FaTree,
-  FaSnowflake,
-  FaKeyboard,
-  FaPlus,
-  FaMinus,
-  FaInfo,
-  FaTemperatureHigh,
-} from "react-icons/fa";
+import GenerationMenu from "./components/GenerationMenu";
 import InfoModal from "./components/InfoModal";
+import { FaPlus, FaMinus, FaInfo } from "react-icons/fa";
 
 function App() {
   const ablyRef = useRef(null);
@@ -56,88 +45,7 @@ function App() {
     <ChakraProvider>
       <div className="App">
         <InfoModal forceOpen={helpOpen} setForceOpen={setHelpOpen} />
-        {isLoading && (
-          <div style={{ position: "absolute", zIndex: 99 }}>
-            <Button colorScheme="green" variant="solid" size="lg" m={2}>
-              Loading... if this takes more than a couple seconds, it's probably
-              broken.
-            </Button>
-          </div>
-        )}
-        {!isLoading && (
-          <div style={{ position: "absolute", zIndex: 99 }}>
-            <Button
-              leftIcon={<PlusSquareIcon />}
-              colorScheme="green"
-              variant="solid"
-              size="lg"
-              m={2}
-              onClick={() => window.onGenerate("a satellite image")}
-            >
-              Generate
-            </Button>
-            <IconButton
-              colorScheme="teal"
-              size="lg"
-              icon={<FaMountain />}
-              m={2}
-              onClick={() =>
-                window.onGenerate("a satellite image of a mountain range")
-              }
-            />
-            <IconButton
-              colorScheme="teal"
-              size="lg"
-              m={2}
-              icon={<FaWater />}
-              onClick={() =>
-                window.onGenerate("a satellite image of a body of water")
-              }
-            />
-            <IconButton
-              colorScheme="teal"
-              size="lg"
-              m={2}
-              icon={<FaCity />}
-              onClick={() => window.onGenerate("a satellite image of a city")}
-            />
-            <IconButton
-              colorScheme="teal"
-              size="lg"
-              m={2}
-              icon={<FaTree />}
-              onClick={() => window.onGenerate("a satellite image of a forest")}
-            />
-            <IconButton
-              colorScheme="teal"
-              size="lg"
-              m={2}
-              icon={<FaTemperatureHigh />}
-              onClick={() => window.onGenerate("a satellite image of a desert")}
-            />
-            <IconButton
-              colorScheme="teal"
-              size="lg"
-              m={2}
-              icon={<FaSnowflake />}
-              onClick={() =>
-                window.onGenerate("a satellite image of a snowy landscape")
-              }
-            />
-            <IconButton
-              colorScheme="teal"
-              size="lg"
-              m={2}
-              icon={<FaKeyboard />}
-              onClick={() => {
-                const val = prompt("a satellite image of a...");
-                if (val) {
-                  window.onGenerate("a satellite image of a " + val);
-                }
-              }}
-            />
-          </div>
-        )}
+        <GenerationMenu isLoading={isLoading} />
         <div style={{ position: "absolute", zIndex: 99, right: 0, bottom: 0 }}>
           <Button
             leftIcon={<FaInfo />}
@@ -168,6 +76,7 @@ function App() {
           renderTile={renderTile}
           startX={start.x || 0}
           startY={start.y || 0}
+          startZoom={start.zoom || 0.5}
         />
       </div>
     </ChakraProvider>
