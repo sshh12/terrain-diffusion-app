@@ -51,13 +51,19 @@ const drawMap = (ctx, transform, tiles, tileLoads) => {
   ctx.scale(transform.scale, transform.scale);
   for (let tileName in tiles) {
     const [tileRow, tileCol] = tileName.split("_");
-    ctx.drawImage(
-      tiles[tileName],
-      parseInt(tileCol) * 512,
-      parseInt(tileRow) * 512,
-      512,
-      512
-    );
+    if (
+      inViewPort(
+        {
+          x: tileCol * 512,
+          y: tileRow * 512,
+          x2: tileCol * 512 + 512,
+          y2: tileRow * 512 + 512,
+        },
+        transform
+      )
+    ) {
+      ctx.drawImage(tiles[tileName], tileCol * 512, tileRow * 512, 512, 512);
+    }
   }
   for (let tileLoad of tileLoads) {
     ctx.beginPath();
@@ -225,6 +231,9 @@ function MapCanvas({
           window.innerHeight / newScale / 2) *
         -newScale;
     }
+
+    actualTransform.x = Math.round(actualTransform.x);
+    actualTransform.y = Math.round(actualTransform.y);
 
     const gridCtx = ctxRef.current.grid;
     gridCtx.clearRect(0, 0, gridCtx.canvas.width, gridCtx.canvas.height);
