@@ -165,6 +165,7 @@ const loadTile = (tileKey, tiles, draw) => {
 
 function MapCanvas({
   renderTile,
+  clearTiles,
   minZoom = 4,
   maxZoom = 0.01,
   startZoom = 0.5,
@@ -308,6 +309,11 @@ function MapCanvas({
     };
   }, []);
 
+  const onAuxClick = (e) => {
+    const location = getEditPortDimensions(globalTransform.current);
+    clearTiles(location);
+  };
+
   const onTouchStart = (e) => {
     if (!e.touches || e.touches.length === 1) {
       touchStart.current = clientPointFromEvent(e);
@@ -427,6 +433,11 @@ function MapCanvas({
                     (e) => onScroll(e),
                     { passive: true }
                   );
+                  canvasRef.current[name].addEventListener("auxclick", (e) => {
+                    if (e.button === 1) {
+                      onAuxClick(e);
+                    }
+                  });
                 }
                 if (isMap) {
                   canvasRef.current[name].offscreenCanvas =

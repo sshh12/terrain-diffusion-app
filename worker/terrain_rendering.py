@@ -1,17 +1,21 @@
 from typing import List
 from concurrent.futures import ProcessPoolExecutor
 from functools import partial
+import logging
 import aioboto3
 import asyncio
 import io
 
 import numpy as np
 from PIL import Image
+from better_profanity import profanity
 
 TILE_PATH = "public/tiles/global/"
 TILE_KEY = TILE_PATH + "{tile_row}_{tile_col}.png"
 BUCKET = "terrain-diffusion-app"
 TILE_SIZE = 512
+COMMON_CAPTION = "a satellite image"
+BANNED_TOKENS = ["trump"]
 
 
 def _local_init(base_model: str, lora_model: str, cache_dir: str):
@@ -115,6 +119,19 @@ async def get_all_tiles() -> List:
     return tiles
 
 
+def _fix_caption(caption: str) -> str:
+    fixed_caption = caption
+    if not caption.startswith("a satellite image"):
+        fixed_caption = COMMON_CAPTION
+    elif any(token.lower() in caption.lower() for token in BANNED_TOKENS):
+        fixed_caption = COMMON_CAPTION
+    elif profanity.contains_profanity(caption):
+        fixed_caption = COMMON_CAPTION
+    if fixed_caption != caption:
+        logging.warning(f"Fixed caption: {caption} -> {fixed_caption}")
+    return fixed_caption
+
+
 async def render_tile(model: LocalGPUInpainter, x: int, y: int, caption: str) -> List:
     tiles_coords = _overlapping_tiles(x, y)
     while len(tiles_coords) not in [1, 4]:
@@ -152,7 +169,7 @@ async def render_tile(model: LocalGPUInpainter, x: int, y: int, caption: str) ->
     mask[np.all(init_ary == 0, axis=2)] = 255
 
     image = await model.run(
-        prompt=caption,
+        prompt=_fix_caption(caption),
         image=Image.fromarray(init_ary),
         mask_image=Image.fromarray(mask),
         num_inference_steps=50,
@@ -169,17 +186,46 @@ async def render_tile(model: LocalGPUInpainter, x: int, y: int, caption: str) ->
             x - offset_x : x - offset_x + TILE_SIZE,
             :,
         ] = out_ary
-        await save_tile_to_s3(
-            session, *tiles_coords[0], full_ary[:TILE_SIZE, :TILE_SIZE, :]
-        )
-        await save_tile_to_s3(
-            session, *tiles_coords[1], full_ary[:TILE_SIZE, TILE_SIZE:, :]
-        )
-        await save_tile_to_s3(
-            session, *tiles_coords[2], full_ary[TILE_SIZE:, :TILE_SIZE, :]
-        )
-        await save_tile_to_s3(
-            session, *tiles_coords[3], full_ary[TILE_SIZE:, TILE_SIZE:, :]
+        await asyncio.gather(
+            save_tile_to_s3(
+                session, *tiles_coords[0], full_ary[:TILE_SIZE, :TILE_SIZE, :]
+            ),
+            save_tile_to_s3(
+                session, *tiles_coords[1], full_ary[:TILE_SIZE, TILE_SIZE:, :]
+            ),
+            save_tile_to_s3(
+                session, *tiles_coords[2], full_ary[TILE_SIZE:, :TILE_SIZE, :]
+            ),
+            save_tile_to_s3(
+                session, *tiles_coords[3], full_ary[TILE_SIZE:, TILE_SIZE:, :]
+            ),
         )
 
     return tiles_coords
+
+
+async def clear_tiles(x: int, y: int) -> List:
+    tiles_coords = _overlapping_tiles(x, y)
+    while len(tiles_coords) != 4:
+        x -= 1
+        y -= 1
+        tiles_coords = _overlapping_tiles(x, y)
+
+    session = aioboto3.Session()
+
+    empty_img = np.zeros((TILE_SIZE, TILE_SIZE, 3), dtype=np.uint8)
+
+    tile_coords_ext = []
+    for dx in {-1, 0, 1}:
+        for dy in {-1, 0, 1}:
+            for row, col in tiles_coords:
+                tile_coords_ext.append((row + dy, col + dx))
+    tile_coords_ext = list(set(tile_coords_ext))
+
+    logging.info(f"Clearing tiles: {tile_coords_ext}")
+
+    await asyncio.gather(
+        *(save_tile_to_s3(session, *tc, empty_img) for tc in tile_coords_ext)
+    )
+
+    return tile_coords_ext

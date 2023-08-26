@@ -45,6 +45,10 @@ function App() {
     channelRef.current.publish("renderTile", { ...location, caption, id });
   };
 
+  const clearTiles = (location) => {
+    // channelRef.current.publish("clearTiles", { ...location });
+  };
+
   const doGenerate = (prompt) => {
     const id = genRandomID();
     window.onGenerate(prompt, id);
@@ -88,6 +92,7 @@ function App() {
         </div>
         <MapCanvas
           renderTile={renderTile}
+          clearTiles={clearTiles}
           startX={start.x || 0}
           startY={start.y || 0}
           startZoom={start.zoom || 0.5}

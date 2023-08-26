@@ -5,7 +5,7 @@ import argparse
 import os
 
 from ably import AblyRealtime
-from terrain_rendering import render_tile, get_all_tiles, LocalGPUInpainter
+from terrain_rendering import render_tile, clear_tiles, get_all_tiles, LocalGPUInpainter
 
 logging.basicConfig(level=logging.INFO)
 
@@ -28,12 +28,22 @@ async def main(kwargs_inpainter: Dict):
                 "tilesUpdated", {"tiles": updated_tiles, "id": message.data["id"]}
             )
 
+        async def on_clear_tiles(message):
+            logging.info(f"Clear Tiles: {message.data}")
+            try:
+                updated_tiles = await clear_tiles(message.data["x"], message.data["y"])
+            except Exception as e:
+                logging.error(f"Error rendering tile: {e}")
+                updated_tiles = []
+            await channel.publish("tilesUpdated", {"tiles": updated_tiles})
+
         async def on_index_tiles(message):
             logging.info(f"Index Tiles: {message.data}")
             await channel.publish("tilesIndex", {"tiles": await get_all_tiles()})
 
         await channel.subscribe("renderTile", on_render_tile)
         await channel.subscribe("indexTiles", on_index_tiles)
+        # await channel.subscribe("clearTiles", on_clear_tiles)
         while True:
             await client.connection.once_async()
 
