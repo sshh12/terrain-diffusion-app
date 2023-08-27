@@ -12,13 +12,14 @@ def is_gpt_approved_caption(caption: str) -> bool:
     import openai
 
     prompt = """
-    You are a moderator for a satellite imagery company.
+    You are a moderator for a fictional satellite imagery company.
 
     Examples of valid captions:
      * A satellite image of a mountain
      * A satellite image of a dark blue river
      * A satellite image of an island in a deep blue ocean
      * A satellite image of a natural disaster
+     * A satellite image of a sci fi futuristic city
 
     Examples of invalid captions:
      * A satellite image of Trump
