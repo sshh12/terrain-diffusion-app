@@ -18,11 +18,13 @@ def is_gpt_approved_caption(caption: str) -> bool:
      * A satellite image of a mountain
      * A satellite image of a dark blue river
      * A satellite image of an island in a deep blue ocean
+     * A satellite image of a natural disaster
 
     Examples of invalid captions:
      * A satellite image of Trump
      * A satellite image of <body part>
      * A satellite image of a cat girl
+     * A satellite image of <something that cannot be possibly be seen from space>
     """
     functions = [
         {

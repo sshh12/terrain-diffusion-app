@@ -162,15 +162,17 @@ async def render_tile(
     mask = np.zeros((TILE_SIZE, TILE_SIZE, 3), dtype=np.uint8)
     mask[np.all(init_ary == 0, axis=2)] = 255
 
-    image = await model.run(
-        prompt=clean_caption(caption, COMMON_CAPTION),
-        image=Image.fromarray(init_ary),
-        mask_image=Image.fromarray(mask),
-        num_inference_steps=50,
-        guidance_scale=7.5,
-    )
-
-    out_ary = np.array(image)
+    if not np.all(mask == 0):
+        image = await model.run(
+            prompt=clean_caption(caption, COMMON_CAPTION),
+            image=Image.fromarray(init_ary),
+            mask_image=Image.fromarray(mask),
+            num_inference_steps=50,
+            guidance_scale=7.5,
+        )
+        out_ary = np.array(image)
+    else:
+        out_ary = init_ary.copy()
 
     if len(tiles_coords) == 1:
         await save_tile_to_s3(session, *tiles_coords[0], out_ary)
