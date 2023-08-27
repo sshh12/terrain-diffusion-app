@@ -9,7 +9,7 @@ import io
 
 import numpy as np
 from PIL import Image
-from better_profanity import profanity
+from moderation import clean_caption
 
 TILE_PATH = "public/tiles/global/"
 TILE_KEY = TILE_PATH + "{tile_row}_{tile_col}.png"
@@ -17,7 +17,6 @@ INDEX_KEY = TILE_PATH + "index.json"
 BUCKET = "terrain-diffusion-app"
 TILE_SIZE = 512
 COMMON_CAPTION = "a satellite image"
-BANNED_TOKENS = ["trump"]
 
 
 def _local_init(base_model: str, lora_model: str, cache_dir: str):
@@ -127,19 +126,6 @@ async def update_index(session: aioboto3.Session, additional_tiles: List):
         await s3.upload_fileobj(buffer, BUCKET, INDEX_KEY)
 
 
-def _fix_caption(caption: str) -> str:
-    fixed_caption = caption
-    if not caption.startswith("a satellite image"):
-        fixed_caption = COMMON_CAPTION
-    elif any(token.lower() in caption.lower() for token in BANNED_TOKENS):
-        fixed_caption = COMMON_CAPTION
-    elif profanity.contains_profanity(caption):
-        fixed_caption = COMMON_CAPTION
-    if fixed_caption != caption:
-        logging.warning(f"Fixed caption: {caption} -> {fixed_caption}")
-    return fixed_caption
-
-
 async def render_tile(
     session: aioboto3.Session, model: LocalGPUInpainter, x: int, y: int, caption: str
 ) -> List:
@@ -177,7 +163,7 @@ async def render_tile(
     mask[np.all(init_ary == 0, axis=2)] = 255
 
     image = await model.run(
-        prompt=_fix_caption(caption),
+        prompt=clean_caption(caption),
         image=Image.fromarray(init_ary),
         mask_image=Image.fromarray(mask),
         num_inference_steps=50,

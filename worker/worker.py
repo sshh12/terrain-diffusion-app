@@ -1,4 +1,3 @@
-from re import A
 from typing import Dict
 import asyncio
 import logging
@@ -7,7 +6,7 @@ import os
 
 from ably import AblyRealtime
 import aioboto3
-from terrain_rendering import render_tile, clear_tiles, update_index, LocalGPUInpainter
+from terrain_rendering import render_tile, clear_tiles, LocalGPUInpainter
 
 logging.basicConfig(level=logging.INFO)
 
