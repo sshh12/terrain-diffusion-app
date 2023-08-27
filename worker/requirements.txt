@@ -1,0 +1,6 @@
+black
+ably
+aioboto3
+numpy
+Pillow
+better_profanity

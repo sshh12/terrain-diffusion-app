@@ -116,7 +116,7 @@ async def get_all_tiles() -> List:
             if "_" in item_key:
                 row, col = item_key.split("_")
                 tiles.append((int(row), int(col)))
-    return tiles
+    return tiles[:100]
 
 
 def _fix_caption(caption: str) -> str:
