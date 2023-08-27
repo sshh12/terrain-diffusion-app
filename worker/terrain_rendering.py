@@ -193,7 +193,7 @@ async def render_tile(
             save_tile_to_s3(
                 session, *tiles_coords[3], full_ary[TILE_SIZE:, TILE_SIZE:, :]
             ),
-            update_index(tiles_coords),
+            update_index(session, tiles_coords),
         )
 
     return tiles_coords
