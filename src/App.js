@@ -12,7 +12,6 @@ import { FaPlus, FaMinus, FaInfo } from "react-icons/fa";
 function App() {
   const ablyRef = useRef(null);
   const channelRef = useRef(null);
-  const gotIndex = useRef(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [start] = useState(
@@ -32,13 +31,14 @@ function App() {
         setPendingGenerations((prev) => prev.filter((id) => id !== data.id));
       }
     });
-    channelRef.current.subscribe("tilesIndex", ({ data }) => {
-      if (gotIndex.current) return;
-      window.onUpdateTiles(data.tiles, null);
-      gotIndex.current = true;
-      setIsLoading(false);
-    });
-    channelRef.current.publish("indexTiles", {});
+    fetch(
+      "https://terrain-diffusion-app.s3.amazonaws.com/public/tiles/global/index.json"
+    )
+      .then((resp) => resp.json())
+      .then((index) => {
+        window.onUpdateTiles(index.tiles);
+        setIsLoading(false);
+      });
   }, []);
 
   const renderTile = (location, caption, id) => {

@@ -4,6 +4,7 @@ from functools import partial
 import logging
 import aioboto3
 import asyncio
+import json
 import io
 
 import numpy as np
@@ -12,6 +13,7 @@ from better_profanity import profanity
 
 TILE_PATH = "public/tiles/global/"
 TILE_KEY = TILE_PATH + "{tile_row}_{tile_col}.png"
+INDEX_KEY = TILE_PATH + "index.json"
 BUCKET = "terrain-diffusion-app"
 TILE_SIZE = 512
 COMMON_CAPTION = "a satellite image"
@@ -106,8 +108,7 @@ async def save_tile_to_s3(
         )
 
 
-async def get_all_tiles() -> List:
-    session = aioboto3.Session()
+async def update_index(session: aioboto3.Session, additional_tiles: List):
     tiles = []
     async with session.resource("s3") as s3:
         bucket = await s3.Bucket(BUCKET)
@@ -116,7 +117,14 @@ async def get_all_tiles() -> List:
             if "_" in item_key:
                 row, col = item_key.split("_")
                 tiles.append((int(row), int(col)))
-    return tiles[:100]
+    tiles = list(set(tiles + additional_tiles))
+
+    data = {"tiles": tiles}
+    buffer = io.BytesIO()
+    buffer.write(json.dumps(data).encode("utf-8"))
+    buffer.seek(0)
+    async with session.client("s3") as s3:
+        await s3.upload_fileobj(buffer, BUCKET, INDEX_KEY)
 
 
 def _fix_caption(caption: str) -> str:
@@ -132,14 +140,14 @@ def _fix_caption(caption: str) -> str:
     return fixed_caption
 
 
-async def render_tile(model: LocalGPUInpainter, x: int, y: int, caption: str) -> List:
+async def render_tile(
+    session: aioboto3.Session, model: LocalGPUInpainter, x: int, y: int, caption: str
+) -> List:
     tiles_coords = _overlapping_tiles(x, y)
     while len(tiles_coords) not in [1, 4]:
         x -= 1
         y -= 1
         tiles_coords = _overlapping_tiles(x, y)
-
-    session = aioboto3.Session()
 
     if len(tiles_coords) == 1:
         init_ary = await get_tile_from_s3(session, *tiles_coords[0])
@@ -199,19 +207,18 @@ async def render_tile(model: LocalGPUInpainter, x: int, y: int, caption: str) ->
             save_tile_to_s3(
                 session, *tiles_coords[3], full_ary[TILE_SIZE:, TILE_SIZE:, :]
             ),
+            update_index(tiles_coords),
         )
 
     return tiles_coords
 
 
-async def clear_tiles(x: int, y: int) -> List:
+async def clear_tiles(session: aioboto3.Session, x: int, y: int) -> List:
     tiles_coords = _overlapping_tiles(x, y)
     while len(tiles_coords) != 4:
         x -= 1
         y -= 1
         tiles_coords = _overlapping_tiles(x, y)
-
-    session = aioboto3.Session()
 
     empty_img = np.zeros((TILE_SIZE, TILE_SIZE, 3), dtype=np.uint8)
 

@@ -1,3 +1,4 @@
+from re import A
 from typing import Dict
 import asyncio
 import logging
@@ -5,12 +6,14 @@ import argparse
 import os
 
 from ably import AblyRealtime
-from terrain_rendering import render_tile, clear_tiles, get_all_tiles, LocalGPUInpainter
+import aioboto3
+from terrain_rendering import render_tile, clear_tiles, update_index, LocalGPUInpainter
 
 logging.basicConfig(level=logging.INFO)
 
 
 async def main(kwargs_inpainter: Dict):
+    aws = aioboto3.Session()
     model = LocalGPUInpainter(**kwargs_inpainter)
     async with AblyRealtime(os.environ["ABLY_API_KEY"]) as client:
         channel = client.channels.get("channel:global")
@@ -19,7 +22,11 @@ async def main(kwargs_inpainter: Dict):
             logging.info(f"Render Tile: {message.data}")
             try:
                 updated_tiles = await render_tile(
-                    model, message.data["x"], message.data["y"], message.data["caption"]
+                    aws,
+                    model,
+                    message.data["x"],
+                    message.data["y"],
+                    message.data["caption"],
                 )
             except Exception as e:
                 logging.error(f"Error rendering tile: {e}")
@@ -31,18 +38,15 @@ async def main(kwargs_inpainter: Dict):
         async def on_clear_tiles(message):
             logging.info(f"Clear Tiles: {message.data}")
             try:
-                updated_tiles = await clear_tiles(message.data["x"], message.data["y"])
+                updated_tiles = await clear_tiles(
+                    aws, message.data["x"], message.data["y"]
+                )
             except Exception as e:
                 logging.error(f"Error rendering tile: {e}")
                 updated_tiles = []
             await channel.publish("tilesUpdated", {"tiles": updated_tiles})
 
-        async def on_index_tiles(message):
-            logging.info(f"Index Tiles: {message.data}")
-            await channel.publish("tilesIndex", {"tiles": await get_all_tiles()})
-
         await channel.subscribe("renderTile", on_render_tile)
-        await channel.subscribe("indexTiles", on_index_tiles)
         # await channel.subscribe("clearTiles", on_clear_tiles)
         while True:
             await client.connection.once_async()
