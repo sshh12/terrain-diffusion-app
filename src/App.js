@@ -38,7 +38,8 @@ function App() {
       .then((index) => {
         window.onUpdateTiles(index.tiles);
         setIsLoading(false);
-      });
+      })
+      .catch((e) => alert("Failed to load. Try again later?"));
   }, []);
 
   const renderTile = (location, caption, id) => {
