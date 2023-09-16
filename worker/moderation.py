@@ -50,7 +50,7 @@ def is_gpt_approved_caption(caption: str) -> bool:
         function_call={"name": "is_valid"},
     )
     args = json.loads(resp.choices[0]["message"]["function_call"]["arguments"])
-    return args["valid"]
+    return args["is_valid"]
 
 
 def clean_caption(caption: str, default: str) -> str:

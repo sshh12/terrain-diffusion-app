@@ -2,16 +2,25 @@ from PIL import Image
 import modal
 
 BASE_MODEL = "stabilityai/stable-diffusion-2-inpainting"
+INPAINT_LORA = "sshh12/sd2-lora-inpainting-sentinel-2-rgb"
 CACHE_DIR = "/root/cache/"
 
 
 def download_models():
     from huggingface_hub import snapshot_download
 
-    ignore = ["*.bin", "*.onnx_data", "*/diffusion_pytorch_model.safetensors"]
     snapshot_download(
         BASE_MODEL,
-        ignore_patterns=ignore,
+        ignore_patterns=[
+            "*.bin",
+            "*.onnx_data",
+            "*/diffusion_pytorch_model.safetensors",
+        ],
+        cache_dir=CACHE_DIR,
+    )
+    snapshot_download(
+        INPAINT_LORA,
+        ignore_patterns=["checkpoint-*/*"],
         cache_dir=CACHE_DIR,
     )
 
@@ -59,10 +68,10 @@ class Model:
             device_map="auto",
             cache_dir=CACHE_DIR,
         )
-        # inpaint_pipe.unet.load_attn_procs(
-        #     lora_model,
-        #     use_safetensors=False,
-        # )
+        self.inpaint_pipe.unet.load_attn_procs(
+            INPAINT_LORA,
+            use_safetensors=False,
+        )
 
     @modal.method()
     def inference(self, prompt, image, mask_image, num_inference_steps, guidance_scale):
