@@ -1,4 +1,5 @@
 from functools import lru_cache
+import openai
 import logging
 import json
 
@@ -9,8 +10,6 @@ BANNED_TOKENS = ["trump"]
 
 @lru_cache(maxsize=None)
 def is_gpt_approved_caption(caption: str) -> bool:
-    import openai
-
     prompt = """
     You are a moderator for a fictional satellite imagery company.
 
@@ -33,13 +32,13 @@ def is_gpt_approved_caption(caption: str) -> bool:
             "description": "Decide whether the users caption is valid",
             "parameters": {
                 "type": "object",
-                "properties": {"valid": {"type": "boolean"}},
+                "properties": {"is_valid": {"type": "boolean"}},
                 "required": ["is_valid"],
             },
         }
     ]
     resp = openai.ChatCompletion.create(
-        model="gpt-4-0613",
+        model="gpt-3.5-turbo",
         messages=[
             {
                 "role": "system",
@@ -56,7 +55,7 @@ def is_gpt_approved_caption(caption: str) -> bool:
 
 def clean_caption(caption: str, default: str) -> str:
     fixed_caption = caption
-    if not caption.startswith("a satellite image"):
+    if not caption.startswith("a satellite image") or caption == default:
         fixed_caption = default
     elif any(token.lower() in caption.lower() for token in BANNED_TOKENS):
         fixed_caption = default

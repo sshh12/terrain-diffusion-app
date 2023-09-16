@@ -164,7 +164,7 @@ async def render_tile(
 
     if not np.all(mask == 0):
         image = await model.run(
-            prompt=clean_caption(caption, COMMON_CAPTION),
+            prompt=clean_caption(caption.lower(), COMMON_CAPTION),
             image=Image.fromarray(init_ary),
             mask_image=Image.fromarray(mask),
             num_inference_steps=50,

@@ -10,6 +10,8 @@
 
 The app is pretty much serverless with [Ably](https://ably.io/) doing most of the live networking and communication between the client and the GPU worker. The GPU worker writes directly to AWS s3 and then notifies the client to re-download them. Netlify is mainly there for static hosting but a cloud function is used to init the Ably websocket.
 
+A slight later modification was to replace the GPU worker with a serverless modal app.
+
 #### The GPU Worker
 
 The worker listens for generation requests and then:
@@ -35,6 +37,7 @@ At a high level:
 
 1. Create a netlify static app from this repo (or host it yourself `yarn build`, although you'll need replicate the `api/` function)
 2. Create an app on https://ably.io/ (free tier works) and set the environment variable `ABLY_API_KEY`
-3. On a machine with a GPU run `worker/worker.py`
+3. Create an https://modal.com/ app and `modal deploy worker.modalapp`
+4. On a machine with a GPU run `worker/worker.py`
 
 Feel free to create an issue if you want help setting this up. This app should work fairly seamlessly for any [diffusers](https://huggingface.co/docs/diffusers/index) model.
