@@ -23,11 +23,14 @@ async def main():
                     message.data["caption"],
                     message.data["space"],
                 )
+                space = message.data["space"]
             except Exception as e:
                 logging.error(f"Error rendering tile: {e}")
+                space = "global"
                 updated_tiles = []
             await channel.publish(
-                "tilesUpdated", {"tiles": updated_tiles, "id": message.data["id"]}
+                "tilesUpdated",
+                {"tiles": updated_tiles, "id": message.data["id"], "space": space},
             )
 
         await channel.subscribe("renderTile", on_render_tile)
