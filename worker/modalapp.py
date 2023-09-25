@@ -31,7 +31,7 @@ image = (
         "libglib2.0-0", "libsm6", "libxrender1", "libxext6", "ffmpeg", "libgl1"
     )
     .pip_install(
-        "diffusers~=0.21",
+        "diffusers==0.21.2",
         "invisible_watermark~=0.1",
         "transformers~=4.31",
         "accelerate~=0.21",
@@ -100,7 +100,7 @@ class Model:
         modal.Secret.from_name("default-aws-secret"),
     ],
 )
-async def render_tile(x, y, caption):
+async def render_tile(x, y, caption, space):
     from terrain_rendering import render_tile
     import aioboto3
 
@@ -122,7 +122,7 @@ async def render_tile(x, y, caption):
             )
             return Image.open(io.BytesIO(out_image))
 
-    updated_tiles = await render_tile(aws, RemoteInpainter(), x, y, caption)
+    updated_tiles = await render_tile(aws, RemoteInpainter(), x, y, caption, space)
     return updated_tiles
 
 

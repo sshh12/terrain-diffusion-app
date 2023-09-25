@@ -11,7 +11,7 @@ import numpy as np
 from PIL import Image
 from moderation import clean_caption
 
-TILE_PATH = "public/tiles/global/"
+TILE_PATH = "public/tiles/{space}/"
 TILE_KEY = TILE_PATH + "{tile_row}_{tile_col}.png"
 INDEX_KEY = TILE_PATH + "index.json"
 BUCKET = "terrain-diffusion-app"
@@ -76,8 +76,10 @@ def _overlapping_tiles(top_left_x: int, top_left_y: int) -> List:
     return tiles
 
 
-async def get_tile_from_s3(session: aioboto3.Session, row: int, col: int) -> np.ndarray:
-    path = TILE_KEY.format(tile_row=row, tile_col=col)
+async def get_tile_from_s3(
+    session: aioboto3.Session, row: int, col: int, space: str
+) -> np.ndarray:
+    path = TILE_KEY.format(tile_row=row, tile_col=col, space=space)
     buffer = io.BytesIO()
     try:
         async with session.client("s3") as s3:
@@ -92,7 +94,7 @@ async def get_tile_from_s3(session: aioboto3.Session, row: int, col: int) -> np.
 
 
 async def save_tile_to_s3(
-    session: aioboto3.Session, row: int, col: int, img_ary: np.ndarray
+    session: aioboto3.Session, row: int, col: int, img_ary: np.ndarray, space: str
 ):
     buffer = io.BytesIO()
     img_rgba = np.concatenate([img_ary, np.full((*img_ary.shape[:2], 1), 255)], axis=-1)
@@ -103,15 +105,15 @@ async def save_tile_to_s3(
     buffer.seek(0)
     async with session.client("s3") as s3:
         await s3.upload_fileobj(
-            buffer, BUCKET, TILE_KEY.format(tile_row=row, tile_col=col)
+            buffer, BUCKET, TILE_KEY.format(tile_row=row, tile_col=col, space=space)
         )
 
 
-async def update_index(session: aioboto3.Session, additional_tiles: List):
+async def update_index(session: aioboto3.Session, additional_tiles: List, space: str):
     tiles = []
     async with session.resource("s3") as s3:
         bucket = await s3.Bucket(BUCKET)
-        async for item in bucket.objects.filter(Prefix=TILE_PATH):
+        async for item in bucket.objects.filter(Prefix=TILE_PATH.format(space=space)):
             item_key = item.key.split("/")[-1].replace(".png", "")
             if "_" in item_key:
                 row, col = item_key.split("_")
@@ -123,11 +125,16 @@ async def update_index(session: aioboto3.Session, additional_tiles: List):
     buffer.write(json.dumps(data).encode("utf-8"))
     buffer.seek(0)
     async with session.client("s3") as s3:
-        await s3.upload_fileobj(buffer, BUCKET, INDEX_KEY)
+        await s3.upload_fileobj(buffer, BUCKET, INDEX_KEY.format(space=space))
 
 
 async def render_tile(
-    session: aioboto3.Session, model: LocalGPUInpainter, x: int, y: int, caption: str
+    session: aioboto3.Session,
+    model: LocalGPUInpainter,
+    x: int,
+    y: int,
+    caption: str,
+    space: str,
 ) -> List:
     tiles_coords = _overlapping_tiles(x, y)
     while len(tiles_coords) not in [1, 4]:
@@ -136,7 +143,7 @@ async def render_tile(
         tiles_coords = _overlapping_tiles(x, y)
 
     if len(tiles_coords) == 1:
-        init_ary = await get_tile_from_s3(session, *tiles_coords[0])
+        init_ary = await get_tile_from_s3(session, *tiles_coords[0], space)
     else:
         top_left, top_right, bottom_left, bottom_right = await asyncio.gather(
             get_tile_from_s3(session, *tiles_coords[0]),
@@ -175,7 +182,7 @@ async def render_tile(
         out_ary = init_ary.copy()
 
     if len(tiles_coords) == 1:
-        await save_tile_to_s3(session, *tiles_coords[0], out_ary)
+        await save_tile_to_s3(session, *tiles_coords[0], out_ary, space)
     else:
         full_ary[
             y - offset_y : y - offset_y + TILE_SIZE,
@@ -184,24 +191,24 @@ async def render_tile(
         ] = out_ary
         await asyncio.gather(
             save_tile_to_s3(
-                session, *tiles_coords[0], full_ary[:TILE_SIZE, :TILE_SIZE, :]
+                session, *tiles_coords[0], full_ary[:TILE_SIZE, :TILE_SIZE, :], space
             ),
             save_tile_to_s3(
-                session, *tiles_coords[1], full_ary[:TILE_SIZE, TILE_SIZE:, :]
+                session, *tiles_coords[1], full_ary[:TILE_SIZE, TILE_SIZE:, :], space
             ),
             save_tile_to_s3(
-                session, *tiles_coords[2], full_ary[TILE_SIZE:, :TILE_SIZE, :]
+                session, *tiles_coords[2], full_ary[TILE_SIZE:, :TILE_SIZE, :], space
             ),
             save_tile_to_s3(
-                session, *tiles_coords[3], full_ary[TILE_SIZE:, TILE_SIZE:, :]
+                session, *tiles_coords[3], full_ary[TILE_SIZE:, TILE_SIZE:, :], space
             ),
-            update_index(session, tiles_coords),
+            update_index(session, tiles_coords, space),
         )
 
     return tiles_coords
 
 
-async def clear_tiles(session: aioboto3.Session, x: int, y: int) -> List:
+async def clear_tiles(session: aioboto3.Session, x: int, y: int, space: str) -> List:
     tiles_coords = _overlapping_tiles(x, y)
     while len(tiles_coords) != 4:
         x -= 1
@@ -220,7 +227,7 @@ async def clear_tiles(session: aioboto3.Session, x: int, y: int) -> List:
     logging.info(f"Clearing tiles: {tile_coords_ext}")
 
     await asyncio.gather(
-        *(save_tile_to_s3(session, *tc, empty_img) for tc in tile_coords_ext)
+        *(save_tile_to_s3(session, *tc, empty_img, space) for tc in tile_coords_ext)
     )
 
     return tile_coords_ext

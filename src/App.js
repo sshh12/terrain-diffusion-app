@@ -18,6 +18,7 @@ function App() {
     JSON.parse(localStorage.getItem("position") || "{}")
   );
   const [pendingGenerations, setPendingGenerations] = useState([]);
+  const space = "global";
 
   useEffect(() => {
     const clientId = genRandomID();
@@ -32,7 +33,7 @@ function App() {
       }
     });
     fetch(
-      "https://terrain-diffusion-app.s3.amazonaws.com/public/tiles/global/index.json"
+      `https://terrain-diffusion-app.s3.amazonaws.com/public/tiles/${space}/index.json`
     )
       .then((resp) => resp.json())
       .then((index) => {

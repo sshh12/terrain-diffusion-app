@@ -21,6 +21,7 @@ async def main():
                     message.data["x"],
                     message.data["y"],
                     message.data["caption"],
+                    message.data["space"],
                 )
             except Exception as e:
                 logging.error(f"Error rendering tile: {e}")
