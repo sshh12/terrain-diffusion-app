@@ -14,7 +14,6 @@ def download_models():
         ignore_patterns=[
             "*.bin",
             "*.onnx_data",
-            "*/diffusion_pytorch_model.safetensors",
         ],
         cache_dir=CACHE_DIR,
     )

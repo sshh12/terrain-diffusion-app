@@ -146,10 +146,10 @@ async def render_tile(
         init_ary = await get_tile_from_s3(session, *tiles_coords[0], space)
     else:
         top_left, top_right, bottom_left, bottom_right = await asyncio.gather(
-            get_tile_from_s3(session, *tiles_coords[0]),
-            get_tile_from_s3(session, *tiles_coords[1]),
-            get_tile_from_s3(session, *tiles_coords[2]),
-            get_tile_from_s3(session, *tiles_coords[3]),
+            get_tile_from_s3(session, *tiles_coords[0], space),
+            get_tile_from_s3(session, *tiles_coords[1], space),
+            get_tile_from_s3(session, *tiles_coords[2], space),
+            get_tile_from_s3(session, *tiles_coords[3], space),
         )
         full_ary = np.concatenate(
             (

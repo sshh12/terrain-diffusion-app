@@ -7,18 +7,19 @@ import MapCanvas from "./canvas/MapCanvas";
 import { IconButton, Button } from "@chakra-ui/react";
 import GenerationMenu from "./components/GenerationMenu";
 import InfoModal from "./components/InfoModal";
-import { FaPlus, FaMinus, FaInfo } from "react-icons/fa";
+import { FaPlus, FaMinus, FaInfo, FaEdit } from "react-icons/fa";
 
 function App() {
   const ablyRef = useRef(null);
   const channelRef = useRef(null);
+  const urlSpace =
+    new URLSearchParams(window.location.search).get("space") || "global";
   const [helpOpen, setHelpOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [start] = useState(
     JSON.parse(localStorage.getItem("position") || "{}")
   );
   const [pendingGenerations, setPendingGenerations] = useState([]);
-  const space = "global";
 
   useEffect(() => {
     const clientId = genRandomID();
@@ -27,24 +28,37 @@ function App() {
     });
     channelRef.current = ablyRef.current.channels.get(`channel:global`);
     channelRef.current.subscribe("tilesUpdated", ({ data }) => {
+      if (data.space !== urlSpace) return;
       window.onUpdateTiles(data.tiles, data.id);
       if (data.id) {
         setPendingGenerations((prev) => prev.filter((id) => id !== data.id));
       }
     });
     fetch(
-      `https://terrain-diffusion-app.s3.amazonaws.com/public/tiles/${space}/index.json`
+      `https://terrain-diffusion-app.s3.amazonaws.com/public/tiles/${urlSpace}/index.json`
     )
       .then((resp) => resp.json())
       .then((index) => {
         window.onUpdateTiles(index.tiles);
         setIsLoading(false);
       })
-      .catch((e) => alert("Failed to load. Try again later?"));
-  }, []);
+      .catch((e) => {
+        if (("" + e).includes("Syntax")) {
+          window.onUpdateTiles([]);
+          setIsLoading(false);
+        } else {
+          alert("Error loading tiles");
+        }
+      });
+  }, [urlSpace]);
 
   const renderTile = (location, caption, id) => {
-    channelRef.current.publish("renderTile", { ...location, caption, id });
+    channelRef.current.publish("renderTile", {
+      ...location,
+      caption,
+      id,
+      space: urlSpace,
+    });
   };
 
   const clearTiles = (location) => {
@@ -67,6 +81,24 @@ function App() {
           disabled={pendingGenerations.length > 2}
         />
         <div style={{ position: "absolute", zIndex: 99, right: 0, bottom: 0 }}>
+          <Button
+            leftIcon={<FaEdit />}
+            variant="solid"
+            size="lg"
+            m={2}
+            onClick={() => {
+              const newMap =
+                prompt("Enter the name of the new/existing world") || "";
+              const mapName = newMap
+                .replace(/[^a-zA-Z0-9]/g, "")
+                .toLocaleLowerCase();
+              if (mapName) {
+                window.location.href = `/?space=${mapName}`;
+              }
+            }}
+          >
+            World: {urlSpace.toUpperCase()}
+          </Button>
           <Button
             leftIcon={<FaInfo />}
             colorScheme="blackAlpha"
@@ -95,6 +127,7 @@ function App() {
         <MapCanvas
           renderTile={renderTile}
           clearTiles={clearTiles}
+          space={urlSpace}
           startX={start.x || 0}
           startY={start.y || 0}
           startZoom={start.zoom || 0.5}

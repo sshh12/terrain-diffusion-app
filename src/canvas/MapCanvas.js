@@ -117,7 +117,7 @@ const drawInter = (ctx, transform) => {
   ctx.font = "30px Arial";
   ctx.textAlign = "center";
   ctx.fillText(
-    `${Math.floor(-transform.x)}, ${Math.floor(-transform.y)}`,
+    `${Math.floor(offsetX)}, ${Math.floor(offsetY)}`,
     offsetX + size / 2,
     offsetY + size + 50,
     size,
@@ -152,7 +152,9 @@ const inViewPort = ({ x, y, x2, y2 }, transform) => {
 };
 
 const loadTile = (tileKey, tiles, draw) => {
-  const tileURL = `https://terrain-diffusion-app.s3.amazonaws.com/public/tiles/global/${tileKey}.png?${+Date.now()}`;
+  const tileURL = `https://terrain-diffusion-app.s3.amazonaws.com/public/tiles/${
+    window.space
+  }/${tileKey}.png?${+Date.now()}`;
   const image = new Image();
   image.width = 512;
   image.height = 512;
@@ -172,6 +174,7 @@ const loadTile = (tileKey, tiles, draw) => {
 function MapCanvas({
   renderTile,
   clearTiles,
+  space,
   minZoom = 4,
   maxZoom = 0.01,
   startZoom = 0.5,
@@ -268,8 +271,9 @@ function MapCanvas({
 
     localStorage.setItem("position", JSON.stringify(actualTransform));
   };
-  // HACK
+  // DIRTY HACKS
   window.draw = draw;
+  window.space = space;
 
   window.onGenerate = (caption, id) => {
     const location = getEditPortDimensions(globalTransform.current);
