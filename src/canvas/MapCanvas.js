@@ -1,6 +1,28 @@
 import React, { useEffect, useState, useRef } from "react";
 
-const canvasTypes = ["grid", "map", "drawing", "interface"];
+const CANVAS_TYPES = ["grid", "map", "drawing", "interface"];
+
+function logZoomSpace(start, end, num) {
+  const logStart = Math.log(start);
+  const logEnd = Math.log(end);
+  const step = (logEnd - logStart) / (num - 1);
+  let values = [];
+
+  for (let i = 0; i < num; i++) {
+    const value = Math.exp(logStart + step * i);
+    values.push(Math.round(value * 100000) / 100000);
+  }
+
+  if (!values.includes(0.5)) {
+    values.push(0.5);
+  }
+
+  values.sort((a, b) => a - b);
+
+  return values;
+}
+
+const ZOOM_SCALES = logZoomSpace(0.01, 2, 40);
 
 const getViewPort = (transform) => {
   const minX = -transform.x / transform.scale;
@@ -202,7 +224,7 @@ function MapCanvas({
   const tileLoadRef = useRef([]);
 
   const updateCanvasSize = () => {
-    for (let canvasType of canvasTypes) {
+    for (let canvasType of CANVAS_TYPES) {
       const canvas = canvasRef.current[canvasType];
       if (canvas) {
         canvas.width = window.innerWidth;
@@ -284,7 +306,11 @@ function MapCanvas({
 
   window.zoom = (amt) => {
     const oldScale = globalTransform.current.scale;
-    const newScale = Math.max(Math.min(oldScale + amt * 0.1, minZoom), maxZoom);
+    const newScaleIndex = Math.max(
+      Math.min(ZOOM_SCALES.indexOf(oldScale) + amt, ZOOM_SCALES.length - 1),
+      0
+    );
+    const newScale = ZOOM_SCALES[newScaleIndex];
 
     globalTransform.current.scale = newScale;
     globalTransform.current.x =
@@ -400,10 +426,14 @@ function MapCanvas({
 
   const onScroll = (e) => {
     const oldScale = globalTransform.current.scale;
-    const newScale = Math.max(
-      Math.min(oldScale + (e.deltaY > 0) * 1.0 * -0.0005, minZoom),
-      maxZoom
+    const newScaleIndex = Math.max(
+      Math.min(
+        ZOOM_SCALES.indexOf(oldScale) + (e.deltaY > 0 ? -1 : 1),
+        ZOOM_SCALES.length - 1
+      ),
+      0
     );
+    const newScale = ZOOM_SCALES[newScaleIndex];
     globalTransform.current.scale = newScale;
     globalTransform.current.x =
       (-globalTransform.current.x / oldScale +
@@ -429,7 +459,7 @@ function MapCanvas({
         height: canvasSize.height,
       }}
     >
-      {canvasTypes.map((name) => {
+      {CANVAS_TYPES.map((name) => {
         const isInterface = name === "interface";
         const isMap = name === "map";
         return (

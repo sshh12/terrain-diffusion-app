@@ -1,7 +1,0 @@
-black
-ably
-numpy
-Pillow
-aioboto3~=11.3.0
-better-profanity~=0.7
-openai~=0.27

@@ -12,9 +12,9 @@ The app is pretty much serverless with [Ably](https://ably.io/) doing most of th
 
 A slight later modification was to replace the GPU worker with a serverless modal app.
 
-#### The GPU Worker
+#### The GPU Endpoint
 
-The worker listens for generation requests and then:
+The endpoint listens for generation requests and then:
 
 1. Translates an x, y coordinate into the (up to 4) 512x512 tiles that will need to be modified
 2. Download these tiles from s3 (if s3 doesn't have it just generate a blank image)
@@ -35,9 +35,8 @@ For more information on training the model see https://github.com/sshh12/terrain
 
 At a high level:
 
-1. Create a netlify static app from this repo (or host it yourself `yarn build`, although you'll need replicate the `api/` function)
+1. Create a netlify static app from this repo
 2. Create an app on https://ably.io/ (free tier works) and set the environment variable `ABLY_API_KEY`
-3. Create an https://modal.com/ app and `modal deploy worker.modalapp`
-4. On a machine with a GPU run `worker/worker.py`
+3. Create an https://modal.com/ app and `cd modal && modal deploy modal_app`
 
 Feel free to create an issue if you want help setting this up. This app should work fairly seamlessly for any [diffusers](https://huggingface.co/docs/diffusers/index) model.

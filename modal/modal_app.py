@@ -1,48 +1,44 @@
-from PIL import Image
+from typing import Dict
+import json
 import modal
-
-BASE_MODEL = "stabilityai/stable-diffusion-2-inpainting"
-INPAINT_LORA = "sshh12/sd2-lora-inpainting-sentinel-2-rgb"
-CACHE_DIR = "/root/cache/"
-
-
-def download_models():
-    from huggingface_hub import snapshot_download
-
-    snapshot_download(
-        BASE_MODEL,
-        ignore_patterns=[
-            "*.bin",
-            "*.onnx_data",
-        ],
-        cache_dir=CACHE_DIR,
-    )
-    snapshot_download(
-        INPAINT_LORA,
-        ignore_patterns=["checkpoint-*/*"],
-        cache_dir=CACHE_DIR,
-    )
-
-
-image = (
-    modal.Image.debian_slim()
-    .apt_install(
-        "libglib2.0-0", "libsm6", "libxrender1", "libxext6", "ffmpeg", "libgl1"
-    )
-    .pip_install(
-        "diffusers==0.21.2",
-        "invisible_watermark~=0.1",
-        "transformers~=4.31",
-        "accelerate~=0.21",
-        "safetensors~=0.3",
-        "aioboto3~=11.3.0",
-        "better-profanity~=0.7",
-        "openai~=0.27",
-    )
-    .run_function(download_models)
+from pydantic import BaseModel
+from fastapi import Response
+from modal_base import (
+    image_base,
+    image_render,
+    stub,
+    BASE_MODEL,
+    INPAINT_LORA,
+    CACHE_DIR,
 )
 
-stub = modal.Stub("terrain-diffusion-app", image=image)
+import methods
+import streaming
+
+
+class BackendArgs(BaseModel):
+    func: str
+    args: Dict
+
+
+@stub.function(
+    secrets=[
+        modal.Secret.from_name("default-aws-secret"),
+        modal.Secret.from_name("terrain-diffusion-secret"),
+    ],
+    image=image_base,
+    container_idle_timeout=300,
+)
+@modal.web_endpoint(method="POST")
+async def backend(args: BackendArgs):
+
+    ably = streaming.AblyClient()
+
+    result = await methods.METHODS[args.func](ably, **args.args)
+
+    await ably.disconnect()
+
+    return Response(content=json.dumps(result), media_type="application/json")
 
 
 def _image_to_bytes(image):
@@ -54,12 +50,15 @@ def _image_to_bytes(image):
     return image_bytes
 
 
-@stub.cls(gpu=modal.gpu.A10G(), container_idle_timeout=60)
+@stub.cls(
+    gpu=modal.gpu.A10G(),
+    container_idle_timeout=60,
+    image=image_render,
+)
 class Model:
     def __enter__(self):
         import torch
         from diffusers import StableDiffusionInpaintPipeline
-        import torch
 
         self.inpaint_pipe = StableDiffusionInpaintPipeline.from_pretrained(
             BASE_MODEL,
@@ -74,6 +73,7 @@ class Model:
 
     @modal.method()
     def inference(self, prompt, image, mask_image, num_inference_steps, guidance_scale):
+        from PIL import Image
         import io
 
         image = self.inpaint_pipe(
@@ -89,18 +89,16 @@ class Model:
 
 @stub.function(
     allow_concurrent_inputs=20,
-    mounts=[
-        modal.Mount.from_local_python_packages(
-            "worker.terrain_rendering", "worker.moderation"
-        )
-    ],
+    mounts=[modal.Mount.from_local_python_packages("terrain_rendering", "moderation")],
     secrets=[
-        modal.Secret.from_name("openai-secret"),
         modal.Secret.from_name("default-aws-secret"),
+        modal.Secret.from_name("terrain-diffusion-secret"),
     ],
+    image=image_render,
 )
 async def render_tile(x, y, caption, space):
     from terrain_rendering import render_tile
+    from PIL import Image
     import aioboto3
 
     aws = aioboto3.Session()
@@ -123,8 +121,3 @@ async def render_tile(x, y, caption, space):
 
     updated_tiles = await render_tile(aws, RemoteInpainter(), x, y, caption, space)
     return updated_tiles
-
-
-@stub.local_entrypoint()
-def main():
-    print(render_tile.remote(10, 10, "A satellite image of a mountain"))
