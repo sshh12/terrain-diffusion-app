@@ -22,6 +22,22 @@ function logZoomSpace(start, end, num) {
   return values;
 }
 
+function indexOfClosest(array, value) {
+  let closest = Infinity;
+  let index = 0;
+
+  for (let i = 0; i < array.length; i++) {
+    const diff = Math.abs(array[i] - value);
+
+    if (diff < closest) {
+      closest = diff;
+      index = i;
+    }
+  }
+
+  return index;
+}
+
 const ZOOM_SCALES = logZoomSpace(0.01, 2, 40);
 
 const getViewPort = (transform) => {
@@ -312,7 +328,10 @@ function MapCanvas({
   window.zoom = (amt) => {
     const oldScale = globalTransform.current.scale;
     const newScaleIndex = Math.max(
-      Math.min(ZOOM_SCALES.indexOf(oldScale) + amt, ZOOM_SCALES.length - 1),
+      Math.min(
+        indexOfClosest(ZOOM_SCALES, oldScale) + amt,
+        ZOOM_SCALES.length - 1
+      ),
       0
     );
     const newScale = ZOOM_SCALES[newScaleIndex];
@@ -433,7 +452,7 @@ function MapCanvas({
     const oldScale = globalTransform.current.scale;
     const newScaleIndex = Math.max(
       Math.min(
-        ZOOM_SCALES.indexOf(oldScale) + (e.deltaY > 0 ? -1 : 1),
+        indexOfClosest(ZOOM_SCALES, oldScale) + (e.deltaY > 0 ? -1 : 1),
         ZOOM_SCALES.length - 1
       ),
       0
