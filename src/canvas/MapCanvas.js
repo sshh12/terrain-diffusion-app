@@ -165,12 +165,19 @@ const clientPointFromEvent = (e) => {
 
 const inViewPort = ({ x, y, x2, y2 }, transform) => {
   const { minX, minY, maxX, maxY } = getViewPort(transform);
-  return (
-    (x >= minX && x <= maxX && y >= minY && y <= maxY) ||
-    (x2 >= minX && x2 <= maxX && y >= minY && y <= maxY) ||
-    (x >= minX && x <= maxX && y2 >= minY && y2 <= maxY) ||
-    (x2 >= minX && x2 <= maxX && y2 >= minY && y2 <= maxY)
-  );
+  const isAnyCornerInViewPort =
+    (x >= minX && x <= maxX && y >= minY && y <= maxY) || // Top-left corner
+    (x2 >= minX && x2 <= maxX && y >= minY && y <= maxY) || // Top-right corner
+    (x >= minX && x <= maxX && y2 >= minY && y2 <= maxY) || // Bottom-left corner
+    (x2 >= minX && x2 <= maxX && y2 >= minY && y2 <= maxY); // Bottom-right corner
+
+  const isAnyViewPortCornerInRect =
+    (minX >= x && minX <= x2 && minY >= y && minY <= y2) || // Top-left corner
+    (maxX >= x && maxX <= x2 && minY >= y && minY <= y2) || // Top-right corner
+    (minX >= x && minX <= x2 && maxY >= y && maxY <= y2) || // Bottom-left corner
+    (maxX >= x && maxX <= x2 && maxY >= y && maxY <= y2); // Bottom-right corner
+
+  return isAnyCornerInViewPort || isAnyViewPortCornerInRect;
 };
 
 const loadTile = (tileKey, tiles, draw) => {
@@ -197,8 +204,6 @@ function MapCanvas({
   renderTile,
   clearTiles,
   space,
-  minZoom = 4,
-  maxZoom = 0.01,
   startZoom = 0.5,
   startX = 0,
   startY = 0,
