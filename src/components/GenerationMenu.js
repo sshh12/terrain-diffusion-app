@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { IconButton, Button } from "@chakra-ui/react";
 import { PlusSquareIcon } from "@chakra-ui/icons";
 import { Tooltip } from "@chakra-ui/react";
@@ -10,6 +10,7 @@ import {
   FaSnowflake,
   FaKeyboard,
   FaTemperatureHigh,
+  FaBackward,
 } from "react-icons/fa";
 
 const options = [
@@ -22,6 +23,7 @@ const options = [
 ];
 
 function GenerationMenu({ isLoading, doGenerate, disabled }) {
+  const [lastCustom, setLastCustom] = useState(null);
   return (
     <div style={{ position: "absolute", zIndex: 99 }}>
       {isLoading && (
@@ -71,10 +73,22 @@ function GenerationMenu({ isLoading, doGenerate, disabled }) {
                 const val = prompt("a satellite image of a...");
                 if (val) {
                   doGenerate("a satellite image of a " + val);
+                  setLastCustom("a satellite image of a " + val);
                 }
               }}
             />
           </Tooltip>
+          {lastCustom && (
+            <Tooltip label={lastCustom}>
+              <IconButton
+                colorScheme="teal"
+                size="lg"
+                m={2}
+                icon={<FaBackward />}
+                onClick={() => doGenerate(lastCustom)}
+              />
+            </Tooltip>
+          )}
         </>
       )}
     </div>
