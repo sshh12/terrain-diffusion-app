@@ -1,7 +1,7 @@
 import "./App.css";
 import React, { useEffect, useRef, useState } from "react";
 import * as Ably from "ably/promises";
-import { ChakraProvider, VStack } from "@chakra-ui/react";
+import { ChakraProvider, VStack, Box } from "@chakra-ui/react";
 import { genRandomID } from "./utils";
 import MapCanvas from "./canvas/MapCanvas";
 import { IconButton, Button } from "@chakra-ui/react";
@@ -11,7 +11,7 @@ import { FaPlus, FaMinus, FaInfo, FaEdit } from "react-icons/fa";
 import { post } from "./api";
 
 function randomSpace() {
-  const SPACES = ["A", "B", "C", "D"];
+  const SPACES = ["a", "b", "c", "d", "e"];
   let seed = 0;
   for (let i = 0; i < navigator.userAgent.length; i++) {
     seed += navigator.userAgent.charCodeAt(i);
@@ -104,8 +104,24 @@ function App() {
           disabled={pendingGenerations.length > 2}
         />
         <div style={{ position: "absolute", zIndex: 99, right: 0, bottom: 0 }}>
-          <VStack flexDirection={"flex-end"}>
-            <div>
+          <VStack align="stretch">
+            <Box sx={{ marginLeft: "auto" }}>
+              <IconButton
+                colorScheme="whiteAlpha"
+                size="lg"
+                icon={<FaMinus />}
+                m={2}
+                onClick={() => window.zoom(-1)}
+              />
+              <IconButton
+                colorScheme="whiteAlpha"
+                size="lg"
+                m={2}
+                icon={<FaPlus />}
+                onClick={() => window.zoom(1)}
+              />
+            </Box>
+            <Box sx={{ marginLeft: "auto" }}>
               <Button
                 leftIcon={<FaEdit />}
                 variant="solid"
@@ -134,23 +150,7 @@ function App() {
               >
                 Help
               </Button>
-            </div>
-            <div>
-              <IconButton
-                colorScheme="whiteAlpha"
-                size="lg"
-                icon={<FaMinus />}
-                m={2}
-                onClick={() => window.zoom(-1)}
-              />
-              <IconButton
-                colorScheme="whiteAlpha"
-                size="lg"
-                m={2}
-                icon={<FaPlus />}
-                onClick={() => window.zoom(1)}
-              />
-            </div>
+            </Box>
           </VStack>
         </div>
         <MapCanvas

@@ -105,12 +105,12 @@ const drawMap = (ctx, transform, tiles, tileLoads) => {
   }
   for (let tileLoad of tileLoads) {
     ctx.beginPath();
-    ctx.fillStyle = "#000";
+    ctx.fillStyle = `rgba(200, 200, 200, ${((Date.now() / 10) % 360) / 360})`;
     ctx.rect(tileLoad.x, tileLoad.y, 512, 512);
     ctx.fill();
     // draw text that says "loading"
     ctx.beginPath();
-    ctx.fillStyle = "#fff";
+    ctx.fillStyle = "#111";
     ctx.font = "30px Arial";
     ctx.textAlign = "center";
     ctx.fillText(`Loading...`, tileLoad.x + 256, tileLoad.y + 80);
@@ -317,6 +317,13 @@ function MapCanvas({
   // DIRTY HACKS
   window.draw = draw;
   window.space = space;
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      window.draw();
+    }, 300);
+    return () => clearInterval(interval);
+  }, []);
 
   window.onGenerate = (caption, id) => {
     const location = getEditPortDimensions(globalTransform.current);
