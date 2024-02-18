@@ -105,7 +105,9 @@ const drawMap = (ctx, transform, tiles, tileLoads) => {
   }
   for (let tileLoad of tileLoads) {
     ctx.beginPath();
-    ctx.fillStyle = `rgba(200, 200, 200, ${((Date.now() / 10) % 360) / 360})`;
+    ctx.fillStyle = `rgba(200, 200, 200, ${
+      ((Date.now() % 3500) + 100) / 3600
+    })`;
     ctx.rect(tileLoad.x, tileLoad.y, 512, 512);
     ctx.fill();
     // draw text that says "loading"
@@ -321,7 +323,7 @@ function MapCanvas({
   useEffect(() => {
     const interval = setInterval(() => {
       window.draw();
-    }, 300);
+    }, 100);
     return () => clearInterval(interval);
   }, []);
 
@@ -332,7 +334,12 @@ function MapCanvas({
     draw();
   };
 
+  window.lastZoom = null;
   window.zoom = (amt) => {
+    // weird super scrolling bug
+    if (window.lastZoom && Date.now() - window.lastZoom < 50) {
+      return;
+    }
     const oldScale = globalTransform.current.scale;
     const newScaleIndex = Math.max(
       Math.min(
@@ -354,6 +361,7 @@ function MapCanvas({
         window.innerHeight / oldScale / 2 -
         window.innerHeight / newScale / 2) *
       -newScale;
+    window.lastZoom = Date.now();
     draw();
   };
 
@@ -456,27 +464,7 @@ function MapCanvas({
   };
 
   const onScroll = (e) => {
-    const oldScale = globalTransform.current.scale;
-    const newScaleIndex = Math.max(
-      Math.min(
-        indexOfClosest(ZOOM_SCALES, oldScale) + (e.deltaY > 0 ? -1 : 1),
-        ZOOM_SCALES.length - 1
-      ),
-      0
-    );
-    const newScale = ZOOM_SCALES[newScaleIndex];
-    globalTransform.current.scale = newScale;
-    globalTransform.current.x =
-      (-globalTransform.current.x / oldScale +
-        window.innerWidth / oldScale / 2 -
-        window.innerWidth / newScale / 2) *
-      -newScale;
-    globalTransform.current.y =
-      (-globalTransform.current.y / oldScale +
-        window.innerHeight / oldScale / 2 -
-        window.innerHeight / newScale / 2) *
-      -newScale;
-    draw();
+    window.zoom(e.deltaY > 0 ? -1 : 1);
   };
 
   return (
