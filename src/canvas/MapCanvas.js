@@ -110,12 +110,12 @@ const drawMap = (ctx, transform, tiles, tileLoads) => {
     })`;
     ctx.rect(tileLoad.x, tileLoad.y, 512, 512);
     ctx.fill();
-    // draw text that says "loading"
     ctx.beginPath();
     ctx.fillStyle = "#111";
     ctx.font = "30px Arial";
     ctx.textAlign = "center";
-    ctx.fillText(`Loading...`, tileLoad.x + 256, tileLoad.y + 80);
+    ctx.fillText(`Generating...`, tileLoad.x + 256, tileLoad.y + 80);
+    ctx.fillText(`(up to 30s)`, tileLoad.x + 256, tileLoad.y + 120);
     ctx.fillText(`"${tileLoad.caption}"`, tileLoad.x + 256, tileLoad.y + 256);
   }
   ctx.restore();
@@ -205,16 +205,26 @@ const loadTile = (tileKey, tiles, draw) => {
   const image = new Image();
   image.width = 512;
   image.height = 512;
+  const offscreen = new OffscreenCanvas(512, 512);
+  tiles[tileKey] = offscreen;
   image.addEventListener(
     "load",
     () => {
-      const offscreen = new OffscreenCanvas(512, 512);
-      tiles[tileKey] = offscreen;
-      offscreen.getContext("2d").drawImage(image, 0, 0);
+      const ctx = tiles[tileKey].getContext("2d");
+      ctx.clearRect(0, 0, 512, 512);
+      ctx.drawImage(image, 0, 0);
       draw();
     },
     false
   );
+  // draw blue place holder
+  const ctx = tiles[tileKey].getContext("2d");
+  ctx.fillStyle = "#11111";
+  ctx.fillRect(0, 0, 512, 512);
+  ctx.fillStyle = "#eee";
+  ctx.font = "30px Arial";
+  ctx.textAlign = "center";
+  ctx.fillText(`Loading...`, 256, 256);
   image.src = tileURL;
 };
 
