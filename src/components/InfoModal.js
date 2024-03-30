@@ -13,7 +13,7 @@ function InfoModal({ forceOpen, setForceOpen }) {
       The following map is completely AI-generated based on Stable Diffusion finetuned on actual satellite imagery. 
       To generate more parts of the map, <b>place the white square over the edge of an existing region</b> (or in a completely blank space) and <b>click one of the generation buttons at the top</b>. 
       This is a live colaborative map so other users edits will automatically appear. 
-      <br/><br/>If you have feedback or want to learn more see <b><a href="https://github.com/sshh12/terrain-diffusion-app">github.com/sshh12/terrain-diffusion-app</a><b>.
+      <br/><br/>If you want to learn more see this <b><a href="https://blog.sshh.io/p/terrain-diffusion">blog post</a><b>.
       <br/><br/><img src="https://i.imgur.com/scomL5Y.png" />`,
     };
   }
