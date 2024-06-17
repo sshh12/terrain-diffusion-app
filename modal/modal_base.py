@@ -46,4 +46,4 @@ image_base = modal.Image.debian_slim().pip_install(
     "ably==2.0.4",
 )
 
-stub = modal.Stub("terrain-diffusion-app")
+stub = modal.App("terrain-diffusion-app")

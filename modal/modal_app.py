@@ -56,7 +56,8 @@ def _image_to_bytes(image):
     image=image_render,
 )
 class Model:
-    def __enter__(self):
+    @modal.enter()
+    def setup(self):
         import torch
         from diffusers import StableDiffusionInpaintPipeline
 
