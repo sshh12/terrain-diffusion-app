@@ -6,7 +6,7 @@ from fastapi import Response
 from modal_base import (
     image_base,
     image_render,
-    stub,
+    app,
     BASE_MODEL,
     INPAINT_LORA,
     CACHE_DIR,
@@ -21,7 +21,7 @@ class BackendArgs(BaseModel):
     args: Dict
 
 
-@stub.function(
+@app.function(
     secrets=[
         modal.Secret.from_name("default-aws-secret"),
         modal.Secret.from_name("terrain-diffusion-secret"),
@@ -50,7 +50,7 @@ def _image_to_bytes(image):
     return image_bytes
 
 
-@stub.cls(
+@app.cls(
     gpu=modal.gpu.A10G(),
     container_idle_timeout=60,
     image=image_render,
@@ -88,7 +88,7 @@ class Model:
         return _image_to_bytes(image)
 
 
-@stub.function(
+@app.function(
     allow_concurrent_inputs=20,
     mounts=[modal.Mount.from_local_python_packages("terrain_rendering", "moderation")],
     secrets=[
